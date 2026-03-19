@@ -6,7 +6,7 @@
     font-size: 18px;
     color: white;
     -webkit-tap-highlight-color: transparent;
-    
+
 }
 
 html {
@@ -121,7 +121,7 @@ header>svg {
     padding: 14px 12px 18px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
     scrollbar-width: none;
 }
 
@@ -147,14 +147,18 @@ header>svg {
     position: relative;
     display: inline-flex;
     overflow: visible;
+    max-width: min(82%, 360px);
 }
 
 .message-bubble {
     position: relative;
-    max-width: min(78%, 360px);
+    width: fit-content;
+    max-width: 100%;
     padding: 11px 14px;
     border-radius: 15px;
     line-height: 1.35;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
     word-break: break-word;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
 }
@@ -169,6 +173,14 @@ header>svg {
     background: var(--incoming-bubble);
     color: var(--incoming-text);
     border-bottom-left-radius: 0px;
+}
+
+.message-row.me .message-bubble-shell {
+    margin-left: auto;
+}
+
+.message-row.other .message-bubble-shell {
+    margin-right: auto;
 }
 
 .message-row.group-middle .message-bubble,
@@ -235,7 +247,7 @@ header>svg {
 
 #input>input {
     background-color: transparent;
-    margin-left: 8px !important; 
+    margin-left: 8px !important;
     color: var(--input-color);
     font-weight: 600;
     font-size: 19px;
@@ -337,4 +349,36 @@ header>span {
 #setting-page {
     background-color: black;
     display: none;
+}
+
+.reaction-row {
+    margin-top: 6px;
+}
+
+.reaction-row.group-bottom,
+.reaction-row.group-single {
+    margin-bottom: 12px;
+}
+
+.reaction-bubble {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 96px;
+    height: 96px;
+    padding: 0;
+    background: transparent !important;
+    box-shadow: none;
+    border-radius: 0;
+}
+
+.reaction-bubble::after {
+    content: none !important;
+}
+
+.message-reaction-media {
+    display: block;
+    width: 96px;
+    height: 96px;
+    object-fit: contain;
 }

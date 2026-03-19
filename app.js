@@ -9,7 +9,7 @@ const voiceBtn = document.getElementById("voice-button");
 const stickerBtn = document.getElementById("sticker-button");
 const enterBtn = document.getElementById("enter-button");
 
-const STORAGE_KEY = "tiktok-chat-theme-messages"; 
+const STORAGE_KEY = "tiktok-chat-theme-messages";
 const REACTIONS = {
     love: {
         label: "Love",
@@ -64,7 +64,7 @@ function normalizeMessage(rawMessage, index) {
         return null;
     }
 
-    const type = rawMessage.type === "reaction" ? "reaction" : "text";
+    const type = ["reaction", "sticker"].includes(rawMessage.type) ? "reaction" : "text";
     const sender = rawMessage.sender === "other" ? "other" : "me";
     const createdAt = Number(rawMessage.createdAt) || Date.now() + index;
 
@@ -215,7 +215,7 @@ function createTextMessage(text, sender = "me") {
         id: Date.now() + Math.floor(Math.random() * 1000),
         sender,
         type: "text",
-        text,
+        text: text.replace(/\s+/g, " ").trim(),
         createdAt: Date.now()
     };
 }
@@ -248,45 +248,22 @@ function handleSendMessage() {
 }
 function triggerReactionBurst(reaction, sourceButton) {
     const reactionConfig = REACTIONS[reaction];
-    if (!reactionConfig || !sourceElement) {
+    if (!reactionConfig || !sourceButton) {
         return;
     }
-
-    const listRect = messageList.getBoundingClientRect();
-    const sourceRect = sourceElement.getBoundingClientRect();
-    const centerX = sourceRect.left - listRect.left + sourceRect.width / 2;
-    const startY = messageList.scrollTop + listRect.bottom - (sourceRect.top + sourceRect.height / 2);
-
-    Array.from({ length: 7 }).forEach((_, index) => {
-        const particle = document.createElement("img");
-        particle.className = "reaction-burst";
-        particle.src = reactionConfig.media;
-        particle.alt = "";
-        particle.style.setProperty("--start-x", `${centerX + (index - 3) * 6}px`);
-        particle.style.setProperty("--start-y", `${startY}px`);
-        particle.style.setProperty("--delay", `${index * 45}ms`);
-        particle.style.setProperty("--drift-x", `${(Math.random() * 90 - 45).toFixed(0)}px`);
-        particle.style.setProperty("--travel-y", `${220 + Math.random() * 90}px`);
-        particle.style.setProperty("--start-scale", `${(0.82 + Math.random() * 0.18).toFixed(2)}`);
-        particle.style.setProperty("--end-scale", `${(1.08 + Math.random() * 0.24).toFixed(2)}`);
-        messageList.appendChild(particle);
-        particle.addEventListener("animationend", () => particle.remove(), { once: true });
-    });
 }
 
-function handleSendReaction(reaction, element) {
+function handleSendReaction(reaction) {
     if (!REACTIONS[reaction]) {
         return;
     }
-
     messages.push(createReactionMessage(reaction, "me"));
     persistAndRender();
-    triggerReactionBurst(reaction, element);
-} 
+   ;
+}
 
 function bindReactionShortcut(element) {
-    const trigger = () => handleSendReaction(element.dataset.reaction, element);
-
+    const trigger = () => handleSendReaction(element.dataset.reaction);
     element.addEventListener("click", trigger);
     element.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -313,13 +290,6 @@ enterBtn.addEventListener("keydown", (event) => {
 });
 
 reactionButtons.forEach(bindReactionShortcut);
-
-window.addEventListener("DOMContentLoaded", () => {
-    loadMessages();
-    renderMessages();
-    updateComposerState();
-    scrollMessagesToBottom(true);
-});
 
 window.addEventListener("DOMContentLoaded", () => {
     loadMessages();
