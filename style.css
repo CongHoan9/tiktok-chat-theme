@@ -299,7 +299,7 @@ header>svg {
 #input>input {
     background-color: transparent;
     margin-left: 8px !important;
-    margin-right: 8px !important;
+    margin-right: -2px !important;
     color: var(--input-color);
     font-weight: 600;
     font-size: 17px;
@@ -307,7 +307,6 @@ header>svg {
     border: none;
     margin: 5px;
     margin-top: 4px;
-    width: 100%;
 }
 
 #input>input::placeholder {
