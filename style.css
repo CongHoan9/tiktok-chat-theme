@@ -43,9 +43,6 @@ footer {
     bottom: 0;
     z-index: 3;
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--keyboard-offset, 0px));
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.34), transparent);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
 }
 
 #icons {
@@ -82,7 +79,7 @@ footer {
 }
 
 header {
-    background-color: rgba(15, 15, 15, 0.28);
+    background-color: var(--bg-color);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     display: grid;
     grid-template-columns: auto auto auto 1fr auto auto;
