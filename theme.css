@@ -17,9 +17,9 @@
     --bg-image: url("image/love.jpg");
     --bg-color: #921f4a;
     --svg-color: #ffaecf;
-    --div-color: rgba(255, 174, 207, 0.9);
+    --div-color: #ffaecf;
     --input-color: #921f4a;
-    --placeholder-color: rgba(146, 31, 74, 0.65);
+    --placeholder-color: #921f4a;
     --outgoing-bubble: #ff9ec2;
     --outgoing-text: #6d1436;
     --incoming-bubble: #661234;
