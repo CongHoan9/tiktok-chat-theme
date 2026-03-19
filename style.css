@@ -131,6 +131,7 @@ header>svg {
     min-height: 100vh;
     height: 100lvh !important;
     pointer-events: none;
+    overflow: hidden;
 }
 
 #chat-background>div {
