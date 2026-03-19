@@ -15,7 +15,9 @@ html {
     scroll-behavior: smooth;
 }
 
-html, body, main {
+html,
+body,
+main {
     height: 100%;
     width: 100%;
 }
@@ -50,14 +52,14 @@ footer {
     display: none;
 }
 
-#icons > div {
+#icons>div {
     margin: 5px;
     height: 33px;
     border-radius: 33px;
     background-color: var(--div-color);
 }
 
-#icons> div > img {
+#icons>div>img {
     width: 22px;
     height: 22px;
     margin-top: 5px;
@@ -77,10 +79,10 @@ header {
     box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
     align-items: center;
     padding: 4px;
-    
+
 }
 
-header > svg {
+header>svg {
     width: 27px !important;
     height: 27px !important;
     stroke-width: 20px;
@@ -98,7 +100,7 @@ header > svg {
     fill: none !important;
 }
 
-#setting-button > circle {
+#setting-button>circle {
     fill: var(--svg-color);
 }
 
@@ -107,13 +109,14 @@ header > svg {
     stroke: var(--svg-color);
 }
 
-#report-button{
+#report-button {
     fill: none !important;
     stroke: var(--svg-color);
     stroke-width: 2px;
 }
 
 #input {
+    padding: 4px;
     margin-left: 10px;
     margin-right: 10px;
     margin-bottom: 5px;
@@ -124,45 +127,48 @@ header > svg {
     grid-auto-rows: auto;
 }
 
-#input > input {
+#input>input {
     background-color: transparent;
+    margin-left: 8px !important; 
+    color: var(--input-color);
     font-weight: 600;
     font-size: 19px;
-    color: var(--input-color);
     outline: none;
     border: none;
     margin: 5px;
+    margin-top: 2px;
     width: 100%;
 }
 
-#input > div {
+#input>div {
     height: 27px;
     width: 27px;
     margin: auto;
     padding: 5px;
-    margin-left: 8px;
+    margin-left: 3px;
 }
 
 .hidden {
     display: none !important;
 }
 
-#input > div > svg {
+#input>div>svg {
     fill: var(--input-color);
     height: 27px;
     width: 27px;
 }
 
-#camera-button, #enter-button {
-    margin: 4px !important;
+#camera-button,
+#enter-button {
     border-radius: 25px;
 }
 
 #camera-button {
     background-color: #00a2c9;
+    margin: 0 !important;
 }
 
-#camera-button > svg {
+#camera-button>svg {
     height: 25px !important;
     width: 25px !important;
     margin: 1px;
@@ -178,19 +184,19 @@ header > svg {
     grid-template-columns: auto auto;
 }
 
-.buttontext > svg {
+.buttontext>svg {
     height: 27px;
     width: 27px;
     margin-top: 3px;
     margin-left: 10px;
 }
 
-.buttontext > img {
+.buttontext>img {
     margin: 5px !important;
     margin-left: 15px !important;
 }
 
-.buttontext > span {
+.buttontext>span {
     margin: 6px;
     margin-right: 15px;
     font-weight: 500;
@@ -198,7 +204,7 @@ header > svg {
     color: var(--input-color);
 }
 
-header > div {
+header>div {
     width: 35px;
     height: 35px;
     margin: 6px;
@@ -208,12 +214,12 @@ header > div {
     border-width: 1px;
 }
 
-header > div > img {
+header>div>img {
     height: 100%;
     width: 100%;
 }
 
-header > span {
+header>span {
     font-size: 17px;
     margin: 6px;
 }
@@ -222,4 +228,3 @@ header > span {
     background-color: black;
     display: none;
 }
-
