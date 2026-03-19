@@ -36,7 +36,18 @@ footer {
     display: flex;
     padding: 5px;
     flex-direction: row;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
     background-color: transparent !important;
+}
+
+#icons>* {
+    flex-shrink: 0;
+}
+
+#icons::-webkit-scrollbar {
+    display: none;
 }
 
 #icons > div {
@@ -116,7 +127,7 @@ header > svg {
 #input > input {
     background-color: transparent;
     font-weight: 600;
-    font-size: 20px;
+    font-size: 19px;
     color: var(--input-color);
     outline: none;
     border: none;
@@ -148,6 +159,32 @@ header > svg {
     width: 25px !important;
     margin: 1px;
     fill: none;
+}
+
+.buttontext {
+    display: grid;
+    grid-auto-rows: auto;
+    grid-template-columns: auto auto;
+}
+
+.buttontext > svg {
+    height: 27px;
+    width: 27px;
+    margin-top: 3px;
+    margin-left: 10px;
+}
+
+.buttontext > img {
+    margin: 5px !important;
+    margin-left: 15px !important;
+}
+
+.buttontext > span {
+    margin: 4px;
+    margin-right: 15px;
+    font-weight: 500;
+    font-size: 17px;
+    color: var(--input-color);
 }
 
 header > div {
