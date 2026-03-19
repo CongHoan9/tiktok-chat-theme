@@ -3,12 +3,11 @@ const chatPage = document.getElementById("chat-page");
 const settingPage = document.getElementById("setting-page");
 const messageList = document.getElementById("message-list");
 const reactionButtons = document.querySelectorAll(".reaction-shortcut");
-const inputBox = document.getElementById("input-textbox");
+const inputBox = document.getElementById("nhan");
 const imageBtn = document.getElementById("image-button");
 const voiceBtn = document.getElementById("voice-button");
 const stickerBtn = document.getElementById("sticker-button");
 const enterBtn = document.getElementById("enter-button");
-const chatBg = document.getElementById("chat-background");
 
 const STORAGE_KEY = "tiktok-chat-theme-messages";
 const REACTIONS = {
