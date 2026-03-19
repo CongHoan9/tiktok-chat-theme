@@ -90,6 +90,14 @@ header>svg {
     cursor: pointer;
 }
 
+img {
+    user-select: none;
+    -webkit-user-drag: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    pointer-events: none;
+}
+
 #chat-page {
     background: var(--bg-image) no-repeat center center;
     background-size: cover;
