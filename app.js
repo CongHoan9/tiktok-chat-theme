@@ -8,7 +8,6 @@ const imageBtn = document.getElementById("image-button");
 const voiceBtn = document.getElementById("voice-button");
 const stickerBtn = document.getElementById("sticker-button");
 const enterBtn = document.getElementById("enter-button");
-const rootStyle = document.documentElement.style;
 
 const STORAGE_KEY = "tiktok-chat-theme-messages";
 const REACTIONS = {
@@ -51,17 +50,6 @@ function backToChat() {
     chatPage.style.display = "block";
 }
 window.backToChat = backToChat;
-
-function syncViewportLayout() {
-    const viewport = window.visualViewport;
-    const viewportHeight = viewport ? viewport.height : window.innerHeight;
-    const viewportOffsetTop = viewport ? viewport.offsetTop : 0;
-    const keyboardOffset = Math.max(0, window.innerHeight - viewportHeight - viewportOffsetTop);
-
-    rootStyle.setProperty("--app-height", `${viewportHeight + viewportOffsetTop}px`);
-    rootStyle.setProperty("--keyboard-offset", `${keyboardOffset}px`);
-    messageList.scrollTop = messageList.scrollHeight - keyboardOffset;
-}
 
 function updateComposerState() {
     const hasText = inputBox.value.trim() !== "";
@@ -309,17 +297,9 @@ function preloadImages() {
     });
 }
 window.addEventListener("DOMContentLoaded", () => {
-    syncViewportLayout();
     preloadImages();
     loadMessages();
     renderMessages();
     updateComposerState();
     scrollMessagesToBottom(true);
 });
-window.addEventListener("resize", syncViewportLayout);
-window.addEventListener("orientationchange", syncViewportLayout);
-
-if (window.visualViewport) {
-    window.visualViewport.addEventListener("resize", syncViewportLayout);
-    window.visualViewport.addEventListener("scroll", syncViewportLayout);
-}

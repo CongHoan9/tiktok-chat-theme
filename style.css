@@ -42,7 +42,7 @@ footer {
     position: sticky;
     bottom: 0;
     z-index: 3;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--keyboard-offset, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 #icons {
@@ -105,7 +105,8 @@ header>svg {
 #chat-page {
     position: fixed;
     inset: 0;
-    height: var(--app-height, 100dvh);
+    min-height: 100svh;
+    height: 100dvh;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
     overflow: hidden;
