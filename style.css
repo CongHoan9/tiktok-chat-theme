@@ -140,6 +140,7 @@ header > svg {
     width: 27px;
     margin: auto;
     padding: 5px;
+    margin-left: 3px;
 }
 
 #input > div > svg {
