@@ -327,7 +327,8 @@ header>svg {
 }
 
 .buttontext>span {
-    margin: 7px;
+    margin: 5px;
+    margin-top: 7px;
     margin-right: 15px;
     font-weight: 600;
     font-size: 15px;
