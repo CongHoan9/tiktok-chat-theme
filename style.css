@@ -121,12 +121,15 @@ header>svg {
     background-color: var(--bg-color);
 }
 
-
 #chat-background {
-    position: absolute;
-    inset: 0;
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
     z-index: -1;
-    height: 100vh;
+    width: 100vw;
+    min-height: 100vh;
+    height: 100lvh;
     pointer-events: none;
 }
 

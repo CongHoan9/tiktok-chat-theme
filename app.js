@@ -8,6 +8,7 @@ const imageBtn = document.getElementById("image-button");
 const voiceBtn = document.getElementById("voice-button");
 const stickerBtn = document.getElementById("sticker-button");
 const enterBtn = document.getElementById("enter-button");
+const chatBg = document.getElementById("chat-background");
 
 const STORAGE_KEY = "tiktok-chat-theme-messages";
 const REACTIONS = {
@@ -187,6 +188,7 @@ function createMessageRow(message, index) {
 
     const row = document.createElement("article");
     row.className = `message-row ${message.sender} ${position}`;
+    row.dataset.messageIndex = String(index);
 
     if (message.type === "reaction") {
         row.classList.add("reaction-row");
@@ -196,6 +198,21 @@ function createMessageRow(message, index) {
 
     row.appendChild(createTextBubble(message, position, message.sender));
     return row;
+}
+
+function replaceMessageRow(index) {
+    const message = messages[index];
+    if (!message) {
+        return;
+    }
+
+    const currentRow = messageList.children[index];
+    if (!currentRow) {
+        return;
+    }
+
+    const nextRow = createMessageRow(message, index);
+    currentRow.replaceWith(nextRow);
 }
 
 function getScrollBottomGap() {
@@ -250,7 +267,6 @@ function createReactionMessage(reaction, sender = "me") {
 
 function persistAndRender() {
     saveMessages();
-    renderMessages();
 }
 
 function handleSendMessage() {
@@ -259,6 +275,42 @@ function handleSendMessage() {
 
     messages.push(createTextMessage(text, "me"));
     persistAndRender();
+
+    inputBox.value = "";
+    updateComposerState();
+    inputBox.focus();
+}
+
+function appendLatestMessage() {
+    const latestIndex = messages.length - 1;
+    const latestMessage = messages[latestIndex];
+
+    if (!latestMessage) {
+        return;
+    }
+
+    if (latestMessage.type === "text" && latestIndex > 0) {
+        const previousMessage = messages[latestIndex - 1];
+        if (
+            previousMessage &&
+            previousMessage.type === "text" &&
+            previousMessage.sender === latestMessage.sender
+        ) {
+            replaceMessageRow(latestIndex - 1);
+        }
+    }
+
+    messageList.appendChild(createMessageRow(latestMessage, latestIndex));
+    scrollMessagesToBottom(true);
+}
+
+function handleSendMessage() {
+    const text = inputBox.value.trim();
+    if (!text) return;
+
+    messages.push(createTextMessage(text, "me"));
+    persistMessages();
+    appendLatestMessage();
 
     inputBox.value = "";
     updateComposerState();
@@ -278,6 +330,7 @@ function handleSendReaction(reaction) {
     }
     messages.push(createReactionMessage(reaction, "me"));
     persistAndRender();
+    appendLatestMessage();
 }
 
 function bindReactionShortcut(element) {
@@ -370,6 +423,25 @@ if (window.visualViewport) {
     window.visualViewport.addEventListener("scroll", () => syncViewportLayout({ preserveScroll: true }));
 }
 
+function updateBackgroundHeight() {
+    const viewport = window.visualViewport;
+    const height = viewport ? viewport.height + viewport.offsetTop : window.innerHeight;
+    chatBg.style.height = height + "px";
+}
+
+window.addEventListener("resize", updateBackgroundHeight);
+window.addEventListener("orientationchange", updateBackgroundHeight);
+
+if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", updateBackgroundHeight);
+    window.visualViewport.addEventListener("scroll", updateBackgroundHeight);
+}
+function updateBg() { chatBg.style.height = (window.visualViewport?.height || window.innerHeight) + "px"; }
+window.addEventListener("resize", updateBg);
+window.visualViewport?.addEventListener("resize", updateBg);
+window.visualViewport?.addEventListener("scroll", updateBg);
+updateBg();
+updateBackgroundHeight();
 window.addEventListener("DOMContentLoaded", () => {
     preloadImages();
     loadMessages();
