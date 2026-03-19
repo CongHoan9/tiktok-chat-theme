@@ -1,0 +1,176 @@
+* {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-weight: bold;
+    font-size: 18px;
+    color: white;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+}
+
+html, body, main {
+    height: 100%;
+    width: 100%;
+}
+
+main {
+    display: grid;
+    grid-auto-columns: auto;
+    grid-template-rows: auto 1fr auto;
+}
+
+footer {
+    display: grid;
+    grid-auto-columns: auto;
+    grid-template-rows: auto auto;
+}
+
+#icons {
+    display: flex;
+    padding: 5px;
+    flex-direction: row;
+    background-color: transparent !important;
+}
+
+#icons > div {
+    margin: 5px;
+    height: 35px;
+    border-radius: 35px;
+    background-color: var(--div-color);
+}
+
+#icons> div > img {
+    width: 25px;
+    height: 25px;
+    margin-top: 5px;
+    margin-left: 20px;
+    margin-right: 20px;
+}
+
+body {
+    position: relative;
+}
+
+header {
+    background-color: var(--bg-color);
+    display: grid;
+    grid-template-columns: auto auto auto 1fr auto auto;
+    grid-auto-rows: auto;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
+    align-items: center;
+    padding: 4px;
+    
+}
+
+header > svg {
+    width: 30px !important;
+    height: 30px !important;
+    stroke-width: 20px;
+    margin: 6px;
+    cursor: pointer;
+}
+
+#chat-page {
+    background: var(--bg-image) no-repeat center center;
+    background-size: cover;
+    background-color: var(--bg-color);
+}
+
+#setting-button {
+    fill: none !important;
+}
+
+#setting-button > circle {
+    fill: var(--svg-color);
+}
+
+#back-button {
+    fill: var(--svg-color);
+    stroke: var(--svg-color);
+}
+
+#report-button{
+    fill: none !important;
+    stroke: var(--svg-color);
+    stroke-width: 2px;
+}
+
+#input {
+    margin-left: 10px;
+    margin-right: 10px;
+    margin-bottom: 5px;
+    border-radius: 50px;
+    background-color: var(--div-color);
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    grid-auto-rows: auto;
+}
+
+#input > input {
+    background-color: transparent;
+    font-weight: 500;
+    font-size: 20px;
+    color: var(--input-color);
+    outline: none;
+    border: none;
+    margin: 5px;
+    width: 100%;
+}
+
+#input > div {
+    height: 34px;
+    width: 34px;
+    margin: auto;
+    padding: 5px;
+}
+
+#input > div > svg {
+    fill: var(--input-color);
+    height: 34px;
+    width: 34px;
+}
+
+#camera-button {
+    background-color: #00a2c9;
+    margin: 4px !important;
+    border-radius: 25px;
+}
+
+#camera-button > svg {
+    height: 27px !important;
+    width: 27px !important;
+    margin: 3px;
+    fill: none;
+}
+
+header > div {
+    width: 40px;
+    height: 40px;
+    margin: 6px;
+    overflow: hidden;
+    border-radius: 50%;
+    border: gray;
+    border-width: 1px;
+}
+
+header > div > img {
+    height: 100%;
+    width: 100%;
+}
+
+header > span {
+    margin: 6px;
+}
+
+#setting-page {
+    background-color: black;
+    display: none;
+}
+

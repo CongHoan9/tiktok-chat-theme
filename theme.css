@@ -1,0 +1,27 @@
+:root {
+    --bg-image: none;
+    --bg-color: black;
+    --svg-color: white;
+    --div-color: #212121;
+    --input-color: white;
+}
+
+.theme-love {
+    --bg-image: url("image/love.jpg");
+    --bg-color: #921f4a;
+    --svg-color: #FFAECF;
+    --div-color: #FFAECF;
+    --input-color: #921f4a;
+}
+
+.theme-dark {
+    --bg-image: none;
+    --bg-color: #111;
+    --header-color: #222;
+}
+
+.theme-blue {
+    --bg-image: none;
+    --bg-color: #0b1d3a;
+    --header-color: #1e90ff;
+}
