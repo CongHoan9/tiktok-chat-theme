@@ -41,17 +41,17 @@ footer {
 
 #icons > div {
     margin: 5px;
-    height: 35px;
-    border-radius: 35px;
+    height: 33px;
+    border-radius: 33px;
     background-color: var(--div-color);
 }
 
 #icons> div > img {
-    width: 25px;
-    height: 25px;
+    width: 22px;
+    height: 22px;
     margin-top: 5px;
-    margin-left: 20px;
-    margin-right: 20px;
+    margin-left: 17px;
+    margin-right: 17px;
 }
 
 body {
@@ -70,8 +70,8 @@ header {
 }
 
 header > svg {
-    width: 30px !important;
-    height: 30px !important;
+    width: 27px !important;
+    height: 27px !important;
     stroke-width: 20px;
     margin: 6px;
     cursor: pointer;
@@ -125,16 +125,16 @@ header > svg {
 }
 
 #input > div {
-    height: 34px;
-    width: 34px;
+    height: 30px;
+    width: 30px;
     margin: auto;
     padding: 5px;
 }
 
 #input > div > svg {
     fill: var(--input-color);
-    height: 34px;
-    width: 34px;
+    height: 30px;
+    width: 30px;
 }
 
 #camera-button {
@@ -144,15 +144,15 @@ header > svg {
 }
 
 #camera-button > svg {
-    height: 27px !important;
-    width: 27px !important;
-    margin: 3px;
+    height: 25px !important;
+    width: 25px !important;
+    margin: 2.5px;
     fill: none;
 }
 
 header > div {
-    width: 40px;
-    height: 40px;
+    width: 35px;
+    height: 35px;
     margin: 6px;
     overflow: hidden;
     border-radius: 50%;
@@ -166,6 +166,7 @@ header > div > img {
 }
 
 header > span {
+    font-size: 17px;
     margin: 6px;
 }
 
