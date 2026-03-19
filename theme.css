@@ -4,24 +4,56 @@
     --svg-color: white;
     --div-color: #212121;
     --input-color: white;
+    --placeholder-color: rgba(255, 255, 255, 0.68);
+    --outgoing-bubble: #00bcd4;
+    --outgoing-text: #ffffff;
+    --incoming-bubble: #212121;
+    --incoming-text: #ffffff;
+    --send-button: #fe2b54;
+    --camera-button: #00a2c9;
 }
 
 .theme-love {
     --bg-image: url("image/love.jpg");
     --bg-color: #921f4a;
-    --svg-color: #FFAECF;
-    --div-color: #FFAECF;
+    --svg-color: #ffaecf;
+    --div-color: rgba(255, 174, 207, 0.9);
     --input-color: #921f4a;
+    --placeholder-color: rgba(146, 31, 74, 0.65);
+    --outgoing-bubble: #ff9ec2;
+    --outgoing-text: #6d1436;
+    --incoming-bubble: #2a0c16;
+    --incoming-text: #fff0f6;
+    --send-button: #ff4c83;
+    --camera-button: #ff7baa;
 }
 
 .theme-dark {
     --bg-image: none;
     --bg-color: #111;
-    --header-color: #222;
+    --svg-color: #ffffff;
+    --div-color: #242424;
+    --input-color: #ffffff;
+    --placeholder-color: rgba(255, 255, 255, 0.6);
+    --outgoing-bubble: linear-gradient(135deg, #18c4e0 0%, #00a7ff 100%);
+    --outgoing-text: #ffffff;
+    --incoming-bubble: #272727;
+    --incoming-text: #ffffff;
+    --send-button: #fe2b54;
+    --camera-button: #00a2c9;
 }
 
 .theme-blue {
     --bg-image: none;
     --bg-color: #0b1d3a;
-    --header-color: #1e90ff;
+    --svg-color: #dce7ff;
+    --div-color: #142b52;
+    --input-color: #eef4ff;
+    --placeholder-color: rgba(238, 244, 255, 0.62);
+    --outgoing-bubble: linear-gradient(135deg, #4d8dff 0%, #7bcbff 100%);
+    --outgoing-text: #eff6ff;
+    --incoming-bubble: #16315f;
+    --incoming-text: #eff6ff;
+    --send-button: #5a7cff;
+    --camera-button: #38bdf8;
 }
