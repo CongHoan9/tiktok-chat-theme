@@ -2,6 +2,7 @@ const settingBtn = document.getElementById("setting-button");
 const chatPage = document.getElementById("chat-page");
 const settingPage = document.getElementById("setting-page");
 const messageList = document.getElementById("message-list");
+const composerFooter = document.querySelector("footer");
 const reactionButtons = document.querySelectorAll(".reaction-shortcut");
 const inputBox = document.getElementById("input-textbox");
 const imageBtn = document.getElementById("image-button");
@@ -57,6 +58,7 @@ function updateComposerState() {
     voiceBtn.classList.toggle("hidden", hasText);
     enterBtn.classList.toggle("hidden", !hasText);
     stickerBtn.classList.remove("hidden");
+    syncViewportLayout();
 }
 
 function normalizeMessage(rawMessage, index) {
@@ -145,6 +147,7 @@ function getGroupPosition(current, previous, next) {
     if (sameAsPrevious && sameAsNext) return "group-middle";
     return "group-bottom";
 }
+
 function createTextBubble(message, position, sender) {
     const shell = document.createElement("div");
     shell.className = "message-bubble-shell";
@@ -192,14 +195,16 @@ function createMessageRow(message, index) {
 }
 
 function scrollMessagesToBottom(force = false) {
-    if (force) {
+    const performScroll = () => {
         messageList.scrollTop = messageList.scrollHeight;
+    };
+
+    if (force) {
+        performScroll();
         return;
     }
 
-    requestAnimationFrame(() => {
-        messageList.scrollTop = messageList.scrollHeight;
-    });
+    requestAnimationFrame(performScroll);
 }
 
 function renderMessages() {
@@ -207,6 +212,7 @@ function renderMessages() {
     messages.forEach((message, index) => {
         messageList.appendChild(createMessageRow(message, index));
     });
+    syncViewportLayout();
     scrollMessagesToBottom();
 }
 
@@ -244,13 +250,20 @@ function handleSendMessage() {
 
     inputBox.value = "";
     updateComposerState();
-    inputBox.focus();
+    inputBox.focus({ preventScroll: true });
 }
+
 function triggerReactionBurst(reaction, sourceButton) {
     const reactionConfig = REACTIONS[reaction];
     if (!reactionConfig || !sourceButton) {
         return;
     }
+}
+
+function restoreInputFocus() {
+    requestAnimationFrame(() => {
+        inputBox.focus({ preventScroll: true });
+    });
 }
 
 function handleSendReaction(reaction) {
@@ -259,11 +272,44 @@ function handleSendReaction(reaction) {
     }
     messages.push(createReactionMessage(reaction, "me"));
     persistAndRender();
-   ;
+    restoreInputFocus();
+}
+
+function getKeyboardOffset() {
+    const viewport = window.visualViewport;
+    if (!viewport) {
+        return 0;
+    }
+
+    const keyboardInset = window.innerHeight - viewport.height - viewport.offsetTop;
+    return Math.max(0, Math.round(keyboardInset));
+}
+
+function syncViewportLayout() {
+    const viewport = window.visualViewport;
+    const appHeight = viewport ? viewport.height + viewport.offsetTop : window.innerHeight;
+    const keyboardOffset = getKeyboardOffset();
+    const footerHeight = composerFooter.offsetHeight;
+
+    document.documentElement.style.setProperty("--app-height", `${Math.round(appHeight)}px`);
+    document.documentElement.style.setProperty("--keyboard-offset", `${keyboardOffset}px`);
+    document.documentElement.style.setProperty("--footer-height", `${footerHeight}px`);
+
+    if (document.activeElement === inputBox) {
+        scrollMessagesToBottom();
+    }
+}
+
+function keepKeyboardOpen(event) {
+    event.preventDefault();
+    restoreInputFocus();
 }
 
 function bindReactionShortcut(element) {
     const trigger = () => handleSendReaction(element.dataset.reaction);
+    element.addEventListener("pointerdown", keepKeyboardOpen);
+    element.addEventListener("mousedown", keepKeyboardOpen);
+    element.addEventListener("touchstart", keepKeyboardOpen, { passive: false });
     element.addEventListener("click", trigger);
     element.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -274,6 +320,10 @@ function bindReactionShortcut(element) {
 }
 
 inputBox.addEventListener("input", updateComposerState);
+inputBox.addEventListener("focus", () => {
+    syncViewportLayout();
+    scrollMessagesToBottom();
+});
 inputBox.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
         event.preventDefault();
@@ -298,10 +348,16 @@ function preloadImages() {
         img.src = src;
     });
 }
+
+window.addEventListener("resize", syncViewportLayout);
+window.visualViewport?.addEventListener("resize", syncViewportLayout);
+window.visualViewport?.addEventListener("scroll", syncViewportLayout);
+
 window.addEventListener("DOMContentLoaded", () => {
     preloadImages();
     loadMessages();
     renderMessages();
     updateComposerState();
+    syncViewportLayout();
     scrollMessagesToBottom(true);
 });
