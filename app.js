@@ -265,22 +265,6 @@ function createReactionMessage(reaction, sender = "me") {
     };
 }
 
-function persistAndRender() {
-    saveMessages();
-}
-
-function handleSendMessage() {
-    const text = inputBox.value.trim();
-    if (!text) return;
-
-    messages.push(createTextMessage(text, "me"));
-    persistAndRender();
-
-    inputBox.value = "";
-    updateComposerState();
-    inputBox.focus();
-}
-
 function appendLatestMessage() {
     const latestIndex = messages.length - 1;
     const latestMessage = messages[latestIndex];
@@ -302,6 +286,10 @@ function appendLatestMessage() {
 
     messageList.appendChild(createMessageRow(latestMessage, latestIndex));
     scrollMessagesToBottom(true);
+}
+
+function persistMessages() {
+    saveMessages();
 }
 
 function handleSendMessage() {
@@ -329,7 +317,7 @@ function handleSendReaction(reaction) {
         return;
     }
     messages.push(createReactionMessage(reaction, "me"));
-    persistAndRender();
+    persistMessages();
     appendLatestMessage();
 }
 
