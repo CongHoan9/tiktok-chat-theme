@@ -3,7 +3,7 @@
     padding: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     font-weight: 600;
-    font-size: 16px;
+    font-size: 18px;
     color: white;
     -webkit-tap-highlight-color: transparent;
 
@@ -86,7 +86,10 @@ header {
     grid-auto-rows: auto;
     box-shadow: 0 2px 20px rgba(0, 0, 0, 0.2);
     align-items: center;
+    position: fixed;
     padding: 4px;
+    width: 100%;
+    z-index: 9999;
 
 }
 
@@ -99,9 +102,15 @@ header>svg {
 }
 
 #chat-page {
+    background-color: transparent;
+}
+#background-image {
     background: var(--bg-image) no-repeat center center;
     background-size: cover;
-    background-color: var(--bg-color);
+    position: fixed;
+    height: 100%;
+    width: 100%;
+    z-index: -1;
 }
 
 #setting-button {
@@ -245,7 +254,7 @@ header>svg {
     padding: 4px;
     margin-left: 10px;
     margin-right: 10px;
-    margin-bottom: 5px;
+    margin-bottom: 10px;
     border-radius: 50px;
     background-color: var(--div-color);
     display: grid;
@@ -258,7 +267,7 @@ header>svg {
     margin-left: 8px !important;
     color: var(--input-color);
     font-weight: 600;
-    font-size: 17px;
+    font-size: 18px;
     outline: none;
     border: none;
     margin: 5px;
@@ -327,8 +336,7 @@ header>svg {
 }
 
 .buttontext>span {
-    margin: 2px;
-    margin-top: 7px;
+    margin: 7px;
     margin-right: 15px;
     font-weight: 600;
     font-size: 15px;
