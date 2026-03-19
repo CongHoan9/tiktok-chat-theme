@@ -411,25 +411,6 @@ if (window.visualViewport) {
     window.visualViewport.addEventListener("scroll", () => syncViewportLayout({ preserveScroll: true }));
 }
 
-function updateBackgroundHeight() {
-    const viewport = window.visualViewport;
-    const height = viewport ? viewport.height + viewport.offsetTop : window.innerHeight;
-    chatBg.style.height = height + "px";
-}
-
-window.addEventListener("resize", updateBackgroundHeight);
-window.addEventListener("orientationchange", updateBackgroundHeight);
-
-if (window.visualViewport) {
-    window.visualViewport.addEventListener("resize", updateBackgroundHeight);
-    window.visualViewport.addEventListener("scroll", updateBackgroundHeight);
-}
-function updateBg() { chatBg.style.height = (window.visualViewport?.height || window.innerHeight) + "px"; }
-window.addEventListener("resize", updateBg);
-window.visualViewport?.addEventListener("resize", updateBg);
-window.visualViewport?.addEventListener("scroll", updateBg);
-updateBg();
-updateBackgroundHeight();
 window.addEventListener("DOMContentLoaded", () => {
     preloadImages();
     loadMessages();

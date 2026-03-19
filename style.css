@@ -129,7 +129,7 @@ header>svg {
     z-index: -1;
     width: 100vw;
     min-height: 100vh;
-    height: 100lvh;
+    height: 100lvh !important;
     pointer-events: none;
 }
 
@@ -381,7 +381,7 @@ header>svg {
 
 .buttontext>span {
     margin: 3px;
-    margin-top: 8px;
+    margin-top: 7px;
     margin-right: 15px;
     font-weight: 600;
     font-size: 15px;
