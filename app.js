@@ -291,7 +291,15 @@ enterBtn.addEventListener("keydown", (event) => {
 
 reactionButtons.forEach(bindReactionShortcut);
 
+function preloadImages() {
+    const images = Object.values(REACTIONS).map(r => r.media);
+    images.forEach(src => {
+        const img = new Image();
+        img.src = src;
+    });
+}
 window.addEventListener("DOMContentLoaded", () => {
+    preloadImages();
     loadMessages();
     renderMessages();
     updateComposerState();
