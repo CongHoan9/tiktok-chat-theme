@@ -121,6 +121,7 @@ header>svg {
     background-color: var(--bg-color);
 }
 
+
 #chat-background {
     position: absolute;
     inset: 0;
