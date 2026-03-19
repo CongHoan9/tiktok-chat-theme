@@ -38,6 +38,12 @@ const DEFAULT_MESSAGES = [
     { id: 6, sender: "me", type: "text", text: "có", createdAt: Date.now() - 430000 },
 ];
 
+const viewportState = {
+    frame: null,
+    lockedBottomGap: 0,
+    lastKnownKeyboardInset: 0
+};
+
 let messages = [];
 
 settingBtn.onclick = () => {
@@ -145,6 +151,7 @@ function getGroupPosition(current, previous, next) {
     if (sameAsPrevious && sameAsNext) return "group-middle";
     return "group-bottom";
 }
+
 function createTextBubble(message, position, sender) {
     const shell = document.createElement("div");
     shell.className = "message-bubble-shell";
@@ -191,15 +198,26 @@ function createMessageRow(message, index) {
     return row;
 }
 
+function getScrollBottomGap() {
+    return Math.max(0, messageList.scrollHeight - messageList.scrollTop - messageList.clientHeight);
+}
+
+function restoreScrollBottomGap(bottomGap = 0) {
+    const nextScrollTop = Math.max(0, messageList.scrollHeight - messageList.clientHeight - bottomGap);
+    messageList.scrollTop = nextScrollTop;
+}
+
 function scrollMessagesToBottom(force = false) {
-    if (force) {
+    const scrollToBottom = () => {
         messageList.scrollTop = messageList.scrollHeight;
+    };
+
+    if (force) {
+        scrollToBottom();
         return;
     }
 
-    requestAnimationFrame(() => {
-        messageList.scrollTop = messageList.scrollHeight;
-    });
+    requestAnimationFrame(scrollToBottom);
 }
 
 function renderMessages() {
@@ -246,6 +264,7 @@ function handleSendMessage() {
     updateComposerState();
     inputBox.focus();
 }
+
 function triggerReactionBurst(reaction, sourceButton) {
     const reactionConfig = REACTIONS[reaction];
     if (!reactionConfig || !sourceButton) {
@@ -272,7 +291,53 @@ function bindReactionShortcut(element) {
     });
 }
 
+function getViewportMetrics() {
+    const viewport = window.visualViewport;
+    if (!viewport) {
+        return {
+            height: window.innerHeight,
+            offsetTop: 0,
+            keyboardInset: 0
+        };
+    }
+
+    const height = Math.round(viewport.height);
+    const offsetTop = Math.max(0, Math.round(viewport.offsetTop));
+    const keyboardInset = Math.max(0, Math.round(window.innerHeight - (viewport.height + viewport.offsetTop)));
+
+    return { height, offsetTop, keyboardInset };
+}
+
+function syncViewportLayout({ preserveScroll = true } = {}) {
+    if (viewportState.frame) {
+        cancelAnimationFrame(viewportState.frame);
+    }
+
+    if (preserveScroll) {
+        viewportState.lockedBottomGap = getScrollBottomGap();
+    }
+
+    viewportState.frame = requestAnimationFrame(() => {
+        const { height, offsetTop, keyboardInset } = getViewportMetrics();
+        chatPage.style.setProperty("--app-height", `${height}px`);
+        chatPage.style.setProperty("--viewport-offset-top", `${offsetTop}px`);
+        chatPage.style.setProperty("--keyboard-inset", `${keyboardInset}px`);
+        chatPage.classList.toggle("keyboard-open", keyboardInset > 0);
+        viewportState.lastKnownKeyboardInset = keyboardInset;
+
+        if (preserveScroll) {
+            restoreScrollBottomGap(viewportState.lockedBottomGap);
+        }
+    });
+}
+
 inputBox.addEventListener("input", updateComposerState);
+inputBox.addEventListener("focus", () => {
+    syncViewportLayout({ preserveScroll: true });
+});
+inputBox.addEventListener("blur", () => {
+    syncViewportLayout({ preserveScroll: true });
+});
 inputBox.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
         event.preventDefault();
@@ -296,10 +361,20 @@ function preloadImages() {
         img.src = src;
     });
 }
+
+window.addEventListener("resize", () => syncViewportLayout({ preserveScroll: true }));
+window.addEventListener("orientationchange", () => syncViewportLayout({ preserveScroll: true }));
+
+if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", () => syncViewportLayout({ preserveScroll: true }));
+    window.visualViewport.addEventListener("scroll", () => syncViewportLayout({ preserveScroll: true }));
+}
+
 window.addEventListener("DOMContentLoaded", () => {
     preloadImages();
     loadMessages();
     renderMessages();
     updateComposerState();
+    syncViewportLayout({ preserveScroll: false });
     scrollMessagesToBottom(true);
 });
