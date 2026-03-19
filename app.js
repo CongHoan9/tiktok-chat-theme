@@ -60,6 +60,7 @@ function syncViewportLayout() {
 
     rootStyle.setProperty("--app-height", `${viewportHeight + viewportOffsetTop}px`);
     rootStyle.setProperty("--keyboard-offset", `${keyboardOffset}px`);
+    messageList.scrollTop = messageList.scrollHeight - keyboardOffset;
 }
 
 function updateComposerState() {
@@ -290,7 +291,6 @@ inputBox.addEventListener("keydown", (event) => {
         handleSendMessage();
     }
 });
-
 enterBtn.addEventListener("click", handleSendMessage);
 enterBtn.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {

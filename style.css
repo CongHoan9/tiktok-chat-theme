@@ -115,22 +115,31 @@ header>svg {
 
 #chat-page::before {
     content: "";
-    position: absolute;
-    inset: 0;
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 100lvh;
+    min-height: 100vh;
     background-image: var(--bg-image);
     background-repeat: no-repeat;
     background-position: center center;
     background-size: cover;
     z-index: -2;
-    transform: scale(1.02);
+    pointer-events: none;
 }
 
 #chat-page::after {
     content: "";
-    position: absolute;
-    inset: 0;
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 100lvh;
+    min-height: 100vh;
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.12) 24%, rgba(0, 0, 0, 0.28));
     z-index: -1;
+    pointer-events: none;
 }
 
 #chat-page>* {
