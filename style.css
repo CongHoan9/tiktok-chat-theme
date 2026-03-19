@@ -138,7 +138,7 @@ header>svg {
     inset: 0!important;
     background-image: var(--bg-image);
     background-position: top center!important;
-    background-size: cover !important;
+    background-size: 100% auto !important;
 }
 
 #setting-button {
