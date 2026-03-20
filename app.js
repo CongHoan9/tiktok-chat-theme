@@ -10,6 +10,15 @@ const stickerBtn = document.getElementById("sticker-button");
 const enterBtn = document.getElementById("enter-button");
 
 const STORAGE_KEY = "tiktok-chat-theme-messages";
+const LONG_PRESS_DELAY = 380;
+const TIMESTAMP_GAP_MS = 60 * 60 * 1000;
+const PROFILE = {
+    name: "Người dùng",
+    handle: "hoan.naoh",
+    meta: "100 đang follow · 1B follower",
+    button: "Follow lại",
+    avatar: "image/avata.jpg"
+};
 const REACTIONS = {
     love: {
         label: "Love",
@@ -28,6 +37,14 @@ const REACTIONS = {
         media: "image/touch.webp"
     }
 };
+const QUICK_EMOJIS = ["😮", "😭", "😂", "👍", "😡", "😱", "❤️"];
+const CONTEXT_ACTIONS = [
+    { label: "Trả lời", icon: "↩", disabled: true },
+    { label: "Chuyển tiếp", icon: "↪", disabled: true },
+    { label: "Sao chép", icon: "⧉", disabled: false },
+    { label: "Dịch", icon: "文A", disabled: true },
+    { label: "Xóa ở phía tôi", icon: "🗑", danger: true, action: "delete" }
+];
 const DEFAULT_MESSAGES = [
     { id: 3, sender: "me", type: "text", text: "Ê tiktok có thể thay đổi nền nè", createdAt: Date.now() - 640000 },
     { id: 1, sender: "other", type: "text", text: "Đâu", createdAt: Date.now() - 600000 },
@@ -44,7 +61,10 @@ const viewportState = {
     lastKnownKeyboardInset: 0
 };
 
-let messages = [];
+let messages = []; 
+let contextMenu = null;
+let longPressTimer = null;
+let longPressPointerId = null;
 
 settingBtn.onclick = () => {
     chatPage.style.display = "none";
@@ -84,7 +104,8 @@ function normalizeMessage(rawMessage, index) {
             sender,
             type,
             reaction,
-            createdAt
+            createdAt,
+            reactionEmoji: typeof rawMessage.reactionEmoji === "string" ? rawMessage.reactionEmoji : ""
         };
     }
 
@@ -94,7 +115,8 @@ function normalizeMessage(rawMessage, index) {
         sender,
         type,
         text,
-        createdAt
+        createdAt,
+        reactionEmoji: typeof rawMessage.reactionEmoji === "string" ? rawMessage.reactionEmoji : ""
     };
 }
 
@@ -106,13 +128,13 @@ function loadMessages() {
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (!saved) {
-            messages = [...DEFAULT_MESSAGES];
+            messages = DEFAULT_MESSAGES.map(normalizeMessage).filter(Boolean);
             saveMessages();
             return;
         }
         const parsed = JSON.parse(saved);
         if (!Array.isArray(parsed)) {
-            messages = [...DEFAULT_MESSAGES];
+            messages = DEFAULT_MESSAGES.map(normalizeMessage).filter(Boolean);
             saveMessages();
             return;
         }
@@ -120,22 +142,17 @@ function loadMessages() {
             .map(normalizeMessage)
             .filter(Boolean);
         if (!messages.length) {
-            messages = [...DEFAULT_MESSAGES];
+            messages = DEFAULT_MESSAGES.map(normalizeMessage).filter(Boolean);
             saveMessages();
         }
     } catch (error) {
-        messages = [...DEFAULT_MESSAGES];
+        messages = DEFAULT_MESSAGES.map(normalizeMessage).filter(Boolean);
         saveMessages();
     }
 }
 
-function canGroupWithNeighbor(current, neighbor) {
-    return Boolean(
-        neighbor &&
-        current.type === "text" &&
-        neighbor.type === "text" &&
-        neighbor.sender === current.sender
-    );
+function persistMessages() {
+    saveMessages();
 }
 
 function getGroupPosition(current, previous, next) {
@@ -152,6 +169,66 @@ function getGroupPosition(current, previous, next) {
     return "group-bottom";
 }
 
+function createTimestampRow(timestamp) {
+    const row = document.createElement("div");
+    row.className = "time-divider-row";
+
+    const label = document.createElement("span");
+    label.className = "time-divider-label";
+    label.textContent = formatTimestampLabel(timestamp);
+
+    row.appendChild(label);
+    return row;
+}
+
+function createChatIntroBlock() {
+    const container = document.createElement("section");
+    container.className = "chat-intro";
+    const avatar = document.createElement("img");
+    avatar.className = "chat-intro-avatar";
+    avatar.src = PROFILE.avatar;
+    avatar.alt = PROFILE.name;
+    const name = document.createElement("h2");
+    name.className = "chat-intro-name";
+    name.textContent = PROFILE.name;
+    const handle = document.createElement("p");
+    handle.className = "chat-intro-handle";
+    handle.textContent = PROFILE.handle;
+    const meta = document.createElement("p");
+    meta.className = "chat-intro-meta";
+    meta.textContent = PROFILE.meta;
+    const button = document.createElement("button");
+    button.className = "chat-intro-follow";
+    button.type = "button";
+    button.textContent = PROFILE.button;
+    container.append(avatar, name, handle, meta, button);
+    return container;
+}
+
+function createAcceptedNotice() {
+    const row = document.createElement("div");
+    row.className = "system-row";
+
+    const text = document.createElement("p");
+    text.className = "system-note";
+    text.textContent = "Yêu cầu trò chuyện đã được chấp nhận. Bạn có thể bắt đầu trò chuyện.";
+
+    row.appendChild(text);
+    return row;
+}
+
+function createReactionBadge(message) {
+    if (!message.reactionEmoji) {
+        return null;
+    }
+
+    const badge = document.createElement("span");
+    badge.className = `message-emoji-reaction ${message.sender}`;
+    badge.textContent = message.reactionEmoji;
+    return badge;
+}
+
+
 function createTextBubble(message, position, sender) {
     const shell = document.createElement("div");
     shell.className = "message-bubble-shell";
@@ -164,20 +241,81 @@ function createTextBubble(message, position, sender) {
         tail.className = `message-tail ${sender}`;
         shell.appendChild(tail);
     }
+    const badge = createReactionBadge(message);
+    if (badge) {
+        shell.appendChild(badge);
+    }
     return shell;
 }
 
 function createReactionBubble(message) {
+    const shell = document.createElement("div");
+    shell.className = "message-bubble-shell reaction-shell";
     const bubble = document.createElement("div");
     bubble.className = "message-bubble reaction-bubble";
-
     const media = document.createElement("img");
     media.className = "message-reaction-media";
     media.src = REACTIONS[message.reaction].media;
     media.alt = REACTIONS[message.reaction].label;
-
     bubble.appendChild(media);
-    return bubble;
+    shell.appendChild(bubble);
+    const badge = createReactionBadge(message);
+    if (badge) {
+        shell.appendChild(badge);
+    }
+    return shell;
+}
+
+function closeContextMenu() {
+    if (!contextMenu) {
+        return;
+    }
+
+    contextMenu.overlay.remove();
+    contextMenu.backdrop.remove();
+    contextMenu = null;
+}
+
+function openContextMenu(row, index) {
+    if (!messages[index]) {
+        return;
+    }
+
+    closeContextMenu();
+    buildContextMenu(row, index);
+}
+
+function addMessageGestureHandlers(row) {
+    const start = (event) => {
+        if (contextMenu) {
+            closeContextMenu();
+        }
+
+        const pointerId = event.pointerId ?? "mouse";
+        longPressPointerId = pointerId;
+        clearTimeout(longPressTimer);
+        longPressTimer = window.setTimeout(() => {
+            openContextMenu(row, Number(row.dataset.messageIndex));
+        }, LONG_PRESS_DELAY);
+    };
+
+    const cancel = (event) => {
+        if (event && longPressPointerId !== null && event.pointerId !== undefined && event.pointerId !== longPressPointerId) {
+            return;
+        }
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+        longPressPointerId = null;
+    };
+
+    row.addEventListener("pointerdown", start);
+    row.addEventListener("pointerup", cancel);
+    row.addEventListener("pointerleave", cancel);
+    row.addEventListener("pointercancel", cancel);
+    row.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        openContextMenu(row, Number(row.dataset.messageIndex));
+    });
 }
 
 function createMessageRow(message, index) {
@@ -193,9 +331,32 @@ function createMessageRow(message, index) {
         row.classList.add("reaction-row");
         row.appendChild(createReactionBubble(message));
         return row;
+    } 
+    else {
+        row.appendChild(createTextBubble(message, position, message.sender));
+    }
+    addMessageGestureHandlers(row); 
+    return row;
+}
+
+function createReadReceiptRow(attachToLatest = false) {
+    const lastMineIndex = [...messages].map((message, index) => ({ message, index }))
+        .filter(({ message }) => message.sender === "me")
+        .pop();
+
+    if (!lastMineIndex) {
+        return null;
     }
 
-    row.appendChild(createTextBubble(message, position, message.sender));
+    const row = document.createElement("div");
+    row.className = `read-receipt-row${attachToLatest ? " attached" : ""}`;
+    row.dataset.forMessageIndex = String(lastMineIndex.index);
+
+    const label = document.createElement("span");
+    label.className = "read-receipt-label";
+    label.textContent = "Đã xem";
+
+    row.appendChild(label);
     return row;
 }
 
@@ -236,12 +397,28 @@ function scrollMessagesToBottom(force = false) {
     requestAnimationFrame(scrollToBottom);
 }
 
-function renderMessages() {
+function renderMessages({ attachReadReceiptToLatest = false } = {}) {
     messageList.innerHTML = "";
+    messageList.appendChild(createChatIntroBlock());
+
+    const firstMessage = messages[0];
+    if (firstMessage) {
+        messageList.appendChild(createTimestampRow(firstMessage.createdAt));
+    }
+    messageList.appendChild(createAcceptedNotice());
+
     messages.forEach((message, index) => {
+        if (index > 0 && shouldRenderTimestamp(index)) {
+            messageList.appendChild(createTimestampRow(message.createdAt));
+        }
+
         messageList.appendChild(createMessageRow(message, index));
     });
-    scrollMessagesToBottom();
+
+    const readReceipt = createReadReceiptRow(attachReadReceiptToLatest);
+    if (readReceipt) {
+        messageList.appendChild(readReceipt);
+    }
 }
 
 function createTextMessage(text, sender = "me") {
@@ -250,7 +427,8 @@ function createTextMessage(text, sender = "me") {
         sender,
         type: "text",
         text: text.replace(/\s+/g, " ").trim(),
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        reactionEmoji: ""
     };
 }
 
@@ -260,30 +438,68 @@ function createReactionMessage(reaction, sender = "me") {
         sender,
         type: "reaction",
         reaction,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        reactionEmoji: ""
     };
 }
 
+function isSameCalendarDay(first, second) {
+    const firstDate = new Date(first);
+    const secondDate = new Date(second);
+    return firstDate.getFullYear() === secondDate.getFullYear()
+        && firstDate.getMonth() === secondDate.getMonth()
+        && firstDate.getDate() === secondDate.getDate();
+}
+
+function formatTimestampLabel(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const timeLabel = new Intl.DateTimeFormat("vi-VN", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+    }).format(date).replace("sáng", "SA").replace("chiều", "CH");
+
+    if (isSameCalendarDay(date, now)) {
+        return `Hôm nay ${timeLabel}`;
+    }
+    if (isSameCalendarDay(date, yesterday)) {
+        return `Hôm qua ${timeLabel}`;
+    }
+    const dateLabel = new Intl.DateTimeFormat("vi-VN", {
+        day: "numeric",
+        month: "numeric",
+        year: now.getFullYear() === date.getFullYear() ? undefined : "numeric"
+    }).format(date);
+    return `${dateLabel} ${timeLabel}`;
+}
+
+function shouldRenderTimestamp(index) {
+    if (index < 0 || index >= messages.length) {
+        return false;
+    }
+    const current = messages[index];
+    const previous = messages[index - 1];
+    if (!previous) {
+        return true;
+    }
+    return current.createdAt - previous.createdAt >= TIMESTAMP_GAP_MS;
+}
+
+function canGroupWithNeighbor(current, neighbor) {
+    return Boolean(
+        neighbor
+        && current.type === "text"
+        && neighbor.type === "text"
+        && neighbor.sender === current.sender
+        && current.createdAt - neighbor.createdAt < TIMESTAMP_GAP_MS
+    );
+}
+
 function appendLatestMessage() {
-    const latestIndex = messages.length - 1;
-    const latestMessage = messages[latestIndex];
-
-    if (!latestMessage) {
-        return;
-    }
-
-    if (latestMessage.type === "text" && latestIndex > 0) {
-        const previousMessage = messages[latestIndex - 1];
-        if (
-            previousMessage &&
-            previousMessage.type === "text" &&
-            previousMessage.sender === latestMessage.sender
-        ) {
-            replaceMessageRow(latestIndex - 1);
-        }
-    }
-
-    messageList.appendChild(createMessageRow(latestMessage, latestIndex));
+    renderMessages({ attachReadReceiptToLatest: true });
     scrollMessagesToBottom(true);
 }
 
@@ -346,6 +562,106 @@ function getViewportMetrics() {
     const keyboardInset = Math.max(0, Math.round(window.innerHeight - (viewport.height + viewport.offsetTop)));
 
     return { height, offsetTop, keyboardInset };
+}
+
+function copyMessageText(index) {
+    const message = messages[index];
+    if (!message || message.type !== "text") {
+        return;
+    }
+
+    const text = message.text;
+    if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).catch(() => { });
+        return;
+    }
+
+    const tempInput = document.createElement("textarea");
+    tempInput.value = text;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand("copy");
+    tempInput.remove();
+}
+
+function deleteMessage(index) {
+    messages.splice(index, 1);
+    persistMessages();
+    closeContextMenu();
+    renderMessages();
+    scrollMessagesToBottom(true);
+}
+
+function setMessageReaction(index, emoji) {
+    if (!messages[index]) {
+        return;
+    }
+
+    messages[index].reactionEmoji = emoji;
+    persistMessages();
+    closeContextMenu();
+    renderMessages();
+    scrollMessagesToBottom(true);
+}
+
+function buildContextMenu(row, index) {
+    const backdrop = document.createElement("div");
+    backdrop.className = "context-backdrop";
+
+    const bubbleShell = row.querySelector(".message-bubble-shell");
+    const overlay = document.createElement("div");
+    overlay.className = `message-context ${messages[index].sender}`;
+
+    const reactionBar = document.createElement("div");
+    reactionBar.className = "message-context-reactions";
+    QUICK_EMOJIS.forEach((emoji) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "context-emoji-btn";
+        button.textContent = emoji;
+        button.addEventListener("click", (event) => {
+            event.stopPropagation();
+            setMessageReaction(index, emoji);
+        });
+        reactionBar.appendChild(button);
+    });
+
+    const menu = document.createElement("div");
+    menu.className = `message-context-menu ${messages[index].sender}`;
+    CONTEXT_ACTIONS.forEach((item) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `context-menu-item${item.danger ? " danger" : ""}`;
+        button.disabled = Boolean(item.disabled);
+
+        const icon = document.createElement("span");
+        icon.className = "context-menu-icon";
+        icon.textContent = item.icon;
+
+        const label = document.createElement("span");
+        label.textContent = item.label;
+
+        button.append(icon, label);
+        button.addEventListener("click", (event) => {
+            event.stopPropagation();
+            if (item.action === "delete") {
+                deleteMessage(index);
+            } else if (item.label === "Sao chép") {
+                copyMessageText(index);
+                closeContextMenu();
+            }
+        });
+        menu.appendChild(button);
+    });
+
+    overlay.append(reactionBar, menu);
+    bubbleShell.appendChild(overlay);
+
+    backdrop.addEventListener("click", closeContextMenu);
+    overlay.addEventListener("click", (event) => event.stopPropagation());
+
+    document.body.appendChild(backdrop);
+    contextMenu = { backdrop, overlay, row, index };
 }
 
 function syncViewportLayout({ preserveScroll = true } = {}) {
