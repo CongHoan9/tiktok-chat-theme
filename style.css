@@ -412,12 +412,7 @@ header>svg {
 
 .read-receipt-row {
     justify-content: flex-end;
-    margin-top: -8px;
     margin-bottom: 8px;
-}
-
-.read-receipt-row.attached {
-    margin-top: -10px;
 }
 
 .reaction-row {
