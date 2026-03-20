@@ -392,6 +392,7 @@ header>svg {
     bottom: -20px;
     padding: 0 6px;
     display: flex;
+    position: absolute;
     align-items: center;
     justify-content: center;
     border-radius: 999px;
