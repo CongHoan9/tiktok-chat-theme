@@ -254,7 +254,7 @@ header>svg {
 .message-row {
     display: flex;
     width: 100%;
-    margin-top: 2px;
+    margin-top: 1px;
 }
 
 .message-row.me {
@@ -436,12 +436,13 @@ header>svg {
 }
 
 .message-context {
+    height: 100%;
     position: absolute;
     z-index: 11;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    top: 0;
+    top: 0px;
 }
 
 .message-context.me {
@@ -461,6 +462,11 @@ header>svg {
 }
 
 .message-context-reactions {
+    width: 250px;
+    overflow-x: scroll;
+    scrollbar-width: none;
+    position: absolute;
+    top: -5px;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -469,11 +475,17 @@ header>svg {
     transform: translateY(-54px);
 }
 
+.message-context-reactions::-webkit-scrollbar {
+    display: none;
+}
+
 .message-context-menu {
+    position: absolute;
     display: flex;
+    bottom: -393px;
     flex-direction: column;
     width: 220px;
-    border-radius: 24px;
+    border-radius: 15px;
     overflow: hidden;
     transform: translateY(-48px);
 }
