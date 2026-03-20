@@ -61,7 +61,7 @@ const viewportState = {
     lastKnownKeyboardInset: 0
 };
 
-let messages = []; 
+let messages = [];
 let contextMenu = null;
 let longPressTimer = null;
 let longPressPointerId = null;
@@ -331,11 +331,11 @@ function createMessageRow(message, index) {
         row.classList.add("reaction-row");
         row.appendChild(createReactionBubble(message));
         return row;
-    } 
+    }
     else {
         row.appendChild(createTextBubble(message, position, message.sender));
     }
-    addMessageGestureHandlers(row); 
+    addMessageGestureHandlers(row);
     return row;
 }
 
@@ -607,11 +607,9 @@ function setMessageReaction(index, emoji) {
 function buildContextMenu(row, index) {
     const backdrop = document.createElement("div");
     backdrop.className = "context-backdrop";
-
     const bubbleShell = row.querySelector(".message-bubble-shell");
     const overlay = document.createElement("div");
     overlay.className = `message-context ${messages[index].sender}`;
-
     const reactionBar = document.createElement("div");
     reactionBar.className = "message-context-reactions";
     QUICK_EMOJIS.forEach((emoji) => {
@@ -625,7 +623,6 @@ function buildContextMenu(row, index) {
         });
         reactionBar.appendChild(button);
     });
-
     const menu = document.createElement("div");
     menu.className = `message-context-menu ${messages[index].sender}`;
     CONTEXT_ACTIONS.forEach((item) => {
@@ -633,14 +630,11 @@ function buildContextMenu(row, index) {
         button.type = "button";
         button.className = `context-menu-item${item.danger ? " danger" : ""}`;
         button.disabled = Boolean(item.disabled);
-
         const icon = document.createElement("span");
         icon.className = "context-menu-icon";
         icon.textContent = item.icon;
-
         const label = document.createElement("span");
         label.textContent = item.label;
-
         button.append(icon, label);
         button.addEventListener("click", (event) => {
             event.stopPropagation();
@@ -653,13 +647,10 @@ function buildContextMenu(row, index) {
         });
         menu.appendChild(button);
     });
-
     overlay.append(reactionBar, menu);
     bubbleShell.appendChild(overlay);
-
     backdrop.addEventListener("click", closeContextMenu);
     overlay.addEventListener("click", (event) => event.stopPropagation());
-
     document.body.appendChild(backdrop);
     contextMenu = { backdrop, overlay, row, index };
 }
@@ -668,11 +659,9 @@ function syncViewportLayout({ preserveScroll = true } = {}) {
     if (viewportState.frame) {
         cancelAnimationFrame(viewportState.frame);
     }
-
     if (preserveScroll) {
         viewportState.lockedBottomGap = getScrollBottomGap();
     }
-
     viewportState.frame = requestAnimationFrame(() => {
         const { height, offsetTop, keyboardInset } = getViewportMetrics();
         chatPage.style.setProperty("--app-height", `${height}px`);
@@ -680,7 +669,6 @@ function syncViewportLayout({ preserveScroll = true } = {}) {
         chatPage.style.setProperty("--keyboard-inset", `${keyboardInset}px`);
         chatPage.classList.toggle("keyboard-open", keyboardInset > 0);
         viewportState.lastKnownKeyboardInset = keyboardInset;
-
         if (preserveScroll) {
             restoreScrollBottomGap(viewportState.lockedBottomGap);
         }

@@ -134,10 +134,10 @@ header>svg {
 }
 
 .chat-background-image {
-    position: absolute!important;
-    inset: 0!important;
+    position: absolute !important;
+    inset: 0 !important;
     background-image: var(--bg-image);
-    background-position: top center!important;
+    background-position: top center !important;
     background-size: 100% auto !important;
 }
 
@@ -426,15 +426,6 @@ header>svg {
     object-fit: contain;
 }
 
-.context-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 10;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(1px);
-    -webkit-backdrop-filter: blur(1px);
-}
-
 .message-context {
     height: 100%;
     position: absolute;
@@ -466,7 +457,7 @@ header>svg {
     overflow-x: scroll;
     scrollbar-width: none;
     position: absolute;
-    top: -5px;
+    top: -3px;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -482,7 +473,7 @@ header>svg {
 .message-context-menu {
     position: absolute;
     display: flex;
-    bottom: -393px;
+    bottom: -388px;
     flex-direction: column;
     width: 220px;
     border-radius: 15px;
