@@ -47,13 +47,7 @@ const CONTEXT_ACTIONS = [
     { label: "Xóa ở phía tôi", icon: "🗑", danger: true, action: "delete" }
 ];
 const DEFAULT_MESSAGES = [
-    { id: 3, sender: "me", type: "text", text: "Ê tiktok có thể thay đổi nền nè", createdAt: Date.now() - 640000 },
-    { id: 1, sender: "other", type: "text", text: "Đâu", createdAt: Date.now() - 600000 },
-    { id: 2, sender: "other", type: "text", text: "Có thấy j đâu", createdAt: Date.now() - 580000 },
-    { id: 3, sender: "me", type: "text", text: "Trong tùy chỉnh ấy", createdAt: Date.now() - 540000 },
-    { id: 4, sender: "other", type: "text", text: "Không thấy", createdAt: Date.now() - 500000 },
-    { id: 5, sender: "other", type: "text", text: "Chịu chết 💔", createdAt: Date.now() - 470000 },
-    { id: 6, sender: "me", type: "text", text: "có", createdAt: Date.now() - 430000 },
+    
 ];
 
 const viewportState = {
