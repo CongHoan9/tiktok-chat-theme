@@ -382,7 +382,6 @@ header>svg {
 
 .read-receipt-row {
     justify-content: flex-end;
-    padding-right: 6px;
     margin-top: -8px;
     margin-bottom: 8px;
 }
