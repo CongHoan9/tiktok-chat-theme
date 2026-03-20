@@ -38,7 +38,7 @@ const REACTIONS = {
         media: "image/touch.webp"
     }
 };
-const QUICK_EMOJIS = ["😮", "😭", "😂", "👍", "😡", "😱", "❤️"];
+const QUICK_EMOJIS = ["😮", "😭", "😂", "👍", "😡", "😱", "❤️", "🤔", "🤗", "🙈", "🤪", "🎉"];
 const CONTEXT_ACTIONS = [
     { label: "Trả lời", icon: "↩", disabled: true },
     { label: "Chuyển tiếp", icon: "↪", disabled: true },
@@ -612,15 +612,17 @@ function deleteMessage(index) {
 }
 
 function setMessageReaction(index, emoji) {
-    if (!messages[index]) {
-        return;
+    if (!messages[index]) return;
+    const current = messages[index].reactionEmoji;
+    if (current === emoji) {
+        messages[index].reactionEmoji = "";
+    } else {
+        messages[index].reactionEmoji = emoji;
     }
-
     messages[index].reactionEmoji = emoji;
     persistMessages();
     closeContextMenu();
     renderMessages();
-    scrollMessagesToBottom(true);
 }
 
 function createContextPreview(index) {
@@ -631,7 +633,8 @@ function createContextPreview(index) {
     const preview = document.createElement("div");
     preview.className = "message-context-preview message-surface";
     const layout = computeMessageLayout(message, {
-        forcePosition: "group-single"
+        previous: messages[index - 1],
+        next: messages[index + 1]
     });
     preview.appendChild(createMessageRow(message, layout, {
         interactive: false,

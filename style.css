@@ -293,6 +293,10 @@ header>svg {
     justify-content: flex-start;
 }
 
+.message-context-preview-row.has-reaction-badge {
+    padding-bottom: 19px;
+}
+
 .message-bubble-shell {
     position: relative;
     display: inline-flex;
@@ -525,11 +529,11 @@ header>svg {
 }
 
 .message-context-menu.me {
-    margin-right: -2px;
+    margin-right: 0px;
 }
 
 .message-context-menu.other {
-    margin-left: -2px;
+    margin-left: 0px;
 }
 
 .context-emoji-btn,
