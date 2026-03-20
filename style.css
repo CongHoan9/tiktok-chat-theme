@@ -220,7 +220,7 @@ header>svg {
 }
 
 .chat-intro-name {
-    margin-top: 10px;
+    margin: 7px 0px;
     font-size: 24px;
     line-height: 1.2;
 }
