@@ -392,7 +392,6 @@ header>svg {
     bottom: -20px;
     padding: 0 6px;
     position: absolute;
-    padding-bottom: 2px;
     border-radius: 999px;
     background-color: var(--bg-color);
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
@@ -603,7 +602,7 @@ header>svg {
     border: none;
     margin: 5px;
     margin-top: 4px;
-    width: 100%;
+    width: calc(100% - 10px) ;
 }
 
 #input>input::placeholder {
