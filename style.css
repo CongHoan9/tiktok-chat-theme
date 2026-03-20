@@ -179,6 +179,23 @@ header>svg {
     display: none;
 }
 
+.message-surface {
+    --message-surface-inline-size: min(100%, calc(100vw - 24px));
+    width: var(--message-surface-inline-size);
+    box-sizing: border-box;
+}
+
+#message-list.message-surface {
+    --message-surface-inline-size: 100%;
+}
+
+#context-root {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 40;
+}
+
 .chat-intro {
     display: flex;
     flex-direction: column;
@@ -252,12 +269,23 @@ header>svg {
 }
 
 .message-row {
+    --bubble-bg: var(--incoming-bubble);
+    --bubble-text-color: var(--incoming-text);
+    --bubble-bottom-left-radius: 0px;
+    --bubble-bottom-right-radius: 15px;
+    --bubble-tail-bg: var(--incoming-bubble);
     display: flex;
-    width: 100%;
+    width: var(--message-surface-inline-size, 100%);
+    max-width: 100%;
     margin-top: 1px;
 }
 
 .message-row.me {
+    --bubble-bg: var(--outgoing-bubble);
+    --bubble-text-color: var(--outgoing-text);
+    --bubble-bottom-left-radius: 15px;
+    --bubble-bottom-right-radius: 0px;
+    --bubble-tail-bg: var(--outgoing-bubble);
     justify-content: flex-end;
 }
 
@@ -269,7 +297,7 @@ header>svg {
     position: relative;
     display: inline-flex;
     overflow: visible;
-    max-width: min(82%, 360px);
+    max-width: min(360px, calc(var(--message-surface-inline-size, 100vw) * 0.82));
 }
 
 .message-bubble {
@@ -278,23 +306,15 @@ header>svg {
     max-width: 100%;
     padding: 11px 14px;
     border-radius: 15px;
+    border-bottom-left-radius: var(--bubble-bottom-left-radius);
+    border-bottom-right-radius: var(--bubble-bottom-right-radius);
+    background: var(--bubble-bg);
+    color: var(--bubble-text-color);
     line-height: 1.35;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     word-break: break-word;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
-}
-
-.message-row.me .message-bubble {
-    background: var(--outgoing-bubble);
-    color: var(--outgoing-text);
-    border-bottom-right-radius: 0px;
-}
-
-.message-row.other .message-bubble {
-    background: var(--incoming-bubble);
-    color: var(--incoming-text);
-    border-bottom-left-radius: 0px;
 }
 
 .message-row.me .message-bubble-shell {
@@ -347,7 +367,7 @@ header>svg {
     bottom: 0;
     width: 18px;
     height: 18px;
-    background: var(--outgoing-bubble) !important;
+    background: var(--bubble-tail-bg) !important;
     clip-path: polygon(0 0, 100% 100%, 0 100%);
 }
 
@@ -359,13 +379,13 @@ header>svg {
     bottom: 0;
     width: 18px;
     height: 18px;
-    background: var(--incoming-bubble);
+    background: var(--bubble-tail-bg);
     clip-path: polygon(100% 0, 100% 100%, 0 100%);
 }
 
 .message-emoji-reaction {
     height: 24px;
-    bottom: -16px;
+    bottom: -20px;
     padding: 0 6px;
     position: absolute;
     padding-bottom: 2px;
@@ -373,6 +393,14 @@ header>svg {
     background-color: var(--bg-color);
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
     border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.message-emoji-reaction.me {
+    right: 4px;
+}
+
+.message-emoji-reaction.other {
+    left: 8px;
 }
 
 .read-receipt-row {
@@ -449,42 +477,21 @@ header>svg {
 
 .message-context-panel.me {
     align-items: flex-end;
-    right: 10px !important;
-    left: auto !important; 
 }
 
 .message-context-panel.other {
     align-items: flex-start;
-    left: 10px !important;
-    right: auto !important;
 }
 
 .message-context-preview {
-    width: 100%;
-}
-
-.message-context-preview.me .message-row {
-    justify-content: flex-end;
-}
-
-.message-context-preview.other .message-row {
-    justify-content: flex-start;
+    display: block;
+    max-width: min(calc(100vw - 24px), 100%);
 }
 
 .message-context-preview-row {
+    width: var(--message-surface-inline-size);
+    max-width: 100%;
     margin: 0 !important;
-}
-
-.message-context-preview.me .message-bubble,
-.message-context-preview-row.me .message-bubble {
-    background: var(--outgoing-bubble);
-    color: var(--outgoing-text);
-}
-
-.message-context-preview.other .message-bubble,
-.message-context-preview-row.other .message-bubble {
-    background: var(--incoming-bubble);
-    color: var(--incoming-text);
 }
 
 .message-context-reactions,

@@ -2,6 +2,7 @@ const settingBtn = document.getElementById("setting-button");
 const chatPage = document.getElementById("chat-page");
 const settingPage = document.getElementById("setting-page");
 const messageList = document.getElementById("message-list");
+const contextRoot = document.getElementById("context-root");
 const reactionButtons = document.querySelectorAll(".reaction-shortcut");
 const inputBox = document.getElementById("input-textbox");
 const imageBtn = document.getElementById("image-button");
@@ -159,17 +160,19 @@ function persistMessages() {
     saveMessages();
 }
 
-function getGroupPosition(current, previous, next) {
-    if (current.type !== "text") {
-        return "group-single";
+function computeMessageLayout(message, { previous, next, forcePosition } = {}) {
+    if (forcePosition) {
+        return forcePosition;
     }
 
-    const sameAsPrevious = canGroupWithNeighbor(current, previous);
-    const sameAsNext = canGroupWithNeighbor(current, next);
-
-    if (!sameAsPrevious && !sameAsNext) return "group-single";
-    if (!sameAsPrevious && sameAsNext) return "group-top";
-    if (sameAsPrevious && sameAsNext) return "group-middle";
+    if (message.type !== "text") {
+        return "group-single";
+    }
+    const samePrev = canGroupWithNeighbor(message, previous);
+    const sameNext = canGroupWithNeighbor(message, next);
+    if (!samePrev && !sameNext) return "group-single";
+    if (!samePrev && sameNext) return "group-top";
+    if (samePrev && sameNext) return "group-middle";
     return "group-bottom";
 }
 
@@ -230,15 +233,6 @@ function createReactionBadge(message) {
     badge.className = `message-emoji-reaction ${message.sender}`;
     badge.textContent = message.reactionEmoji;
     return badge;
-}
-
-function applyBubbleTheme(element, sender) {
-    const bubble = element.querySelector(".message-bubble");
-    if (!bubble) {
-        return;
-    }
-    bubble.style.background = sender === "me" ? "var(--outgoing-bubble)" : "var(--incoming-bubble)";
-    bubble.style.color = sender === "me" ? "var(--outgoing-text)" : "var(--incoming-text)";
 }
 
 function createTextBubble(message, position, sender) {
@@ -333,14 +327,18 @@ function addMessageGestureHandlers(row) {
     });
 }
 
-function createMessageRow(message, index) {
-    const previous = messages[index - 1];
-    const next = messages[index + 1];
-    const position = getGroupPosition(message, previous, next);
+function createMessageRow(message, layout, options = {}) {
+    const { interactive = true, preview = false, index } = options;
 
     const row = document.createElement("article");
-    row.className = `message-row ${message.sender} ${position}`;
-    row.dataset.messageIndex = String(index);
+    row.className = `message-row ${message.sender} ${layout}`;
+    if (preview) {
+        row.classList.add("message-context-preview-row");
+    }
+    if (interactive && index !== undefined) {
+        row.dataset.messageIndex = String(index);
+        addMessageGestureHandlers(row);
+    }
     if (message.reactionEmoji) {
         row.classList.add("has-reaction-badge");
     }
@@ -350,10 +348,7 @@ function createMessageRow(message, index) {
         row.appendChild(createReactionBubble(message));
         return row;
     }
-    else {
-        row.appendChild(createTextBubble(message, position, message.sender));
-    }
-    addMessageGestureHandlers(row);
+    row.appendChild(createTextBubble(message, layout, message.sender));
     return row;
 }
 
@@ -388,8 +383,11 @@ function replaceMessageRow(index) {
     if (!currentRow) {
         return;
     }
-
-    const nextRow = createMessageRow(message, index);
+    const layout = computeMessageLayout(message, {
+        previous: messages[index - 1],
+        next: messages[index + 1]
+    });
+    const nextRow = createMessageRow(message, layout, { index });
     currentRow.replaceWith(nextRow);
 }
 
@@ -429,8 +427,11 @@ function renderMessages({ attachReadReceiptToLatest = false } = {}) {
         if (index > 0 && shouldRenderTimestamp(index)) {
             messageList.appendChild(createTimestampRow(message.createdAt));
         }
-
-        messageList.appendChild(createMessageRow(message, index));
+        const layout = computeMessageLayout(message, {
+            previous: messages[index - 1],
+            next: messages[index + 1]
+        });
+        messageList.appendChild(createMessageRow(message, layout, { index }));
     });
 
     const readReceipt = createReadReceiptRow(attachReadReceiptToLatest);
@@ -622,19 +623,20 @@ function setMessageReaction(index, emoji) {
     scrollMessagesToBottom(true);
 }
 
-function createContextPreview(row, sender) {
+function createContextPreview(index) {
+    const message = messages[index];
+    if (!message) {
+        return document.createElement("div");
+    }
     const preview = document.createElement("div");
-    preview.className = `message-context-preview ${sender}`;
-
-    const previewRow = row.cloneNode(true);
-    previewRow.classList.add("message-context-preview-row");
-    previewRow.classList.toggle("me", sender === "me");
-    previewRow.classList.toggle("other", sender === "other");
-    previewRow.removeAttribute("data-message-index");
-    previewRow.querySelector(".message-context")?.remove();
-    applyBubbleTheme(previewRow, sender);
-    preview.appendChild(previewRow);
-
+    preview.className = "message-context-preview message-surface";
+    const layout = computeMessageLayout(message, {
+        forcePosition: "group-single"
+    });
+    preview.appendChild(createMessageRow(message, layout, {
+        interactive: false,
+        preview: true
+    }));
     return preview;
 }
 
@@ -648,7 +650,7 @@ function positionContextPanel(row, panel, sender) {
     const desiredLeft = sender === "me"
         ? rowRect.right - panelRect.width
         : rowRect.left;
-    const desiredTop = Math.max(verticalPadding, rowRect.top - 72);
+    const desiredTop = Math.max(verticalPadding, rowRect.top - 59);
     const maxLeft = Math.max(horizontalPadding, viewportWidth - panelRect.width - horizontalPadding);
     const maxTop = Math.max(verticalPadding, viewportHeight - panelRect.height - verticalPadding);
 
@@ -701,12 +703,12 @@ function buildContextMenu(row, index) {
         });
         menu.appendChild(button);
     });
-    panel.append(reactionBar, createContextPreview(row, sender), menu);
+    panel.append(reactionBar, createContextPreview(index), menu);
     overlay.appendChild(panel);
     backdrop.addEventListener("click", closeContextMenu);
     overlay.addEventListener("click", (event) => event.stopPropagation());
     panel.addEventListener("click", (event) => event.stopPropagation());
-    document.body.append(backdrop, overlay);
+    contextRoot.append(backdrop, overlay);
     const handleViewportChange = () => positionContextPanel(row, panel, sender);
     positionContextPanel(row, panel, sender);
     requestAnimationFrame(handleViewportChange);
