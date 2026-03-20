@@ -66,6 +66,10 @@ let contextMenu = null;
 let longPressTimer = null;
 let longPressPointerId = null;
 
+function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+}
+
 settingBtn.onclick = () => {
     chatPage.style.display = "none";
     settingPage.style.display = "block";
@@ -273,6 +277,9 @@ function closeContextMenu() {
 
     contextMenu.overlay.remove();
     contextMenu.backdrop.remove();
+    window.removeEventListener("resize", contextMenu.handleViewportChange);
+    window.visualViewport?.removeEventListener("resize", contextMenu.handleViewportChange);
+    window.visualViewport?.removeEventListener("scroll", contextMenu.handleViewportChange);
     contextMenu = null;
 }
 
@@ -604,12 +611,47 @@ function setMessageReaction(index, emoji) {
     scrollMessagesToBottom(true);
 }
 
+function createContextPreview(row, sender) {
+    const preview = document.createElement("div");
+    preview.className = `message-context-preview ${sender}`;
+
+    const previewRow = row.cloneNode(true);
+    previewRow.classList.add("message-context-preview-row");
+    previewRow.classList.toggle("me", sender === "me");
+    previewRow.classList.toggle("other", sender === "other");
+    previewRow.removeAttribute("data-message-index");
+    previewRow.querySelector(".message-context")?.remove();
+    preview.appendChild(previewRow);
+
+    return preview;
+}
+
+function positionContextPanel(row, panel, sender) {
+    const rowRect = row.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const horizontalPadding = 12;
+    const verticalPadding = 16;
+    const desiredLeft = sender === "me"
+        ? rowRect.right - panelRect.width
+        : rowRect.left;
+    const desiredTop = Math.max(verticalPadding, rowRect.top - 72);
+    const maxLeft = Math.max(horizontalPadding, viewportWidth - panelRect.width - horizontalPadding);
+    const maxTop = Math.max(verticalPadding, viewportHeight - panelRect.height - verticalPadding);
+
+    panel.style.left = `${clamp(desiredLeft, horizontalPadding, maxLeft)}px`;
+    panel.style.top = `${clamp(desiredTop, verticalPadding, maxTop)}px`;
+}
+
 function buildContextMenu(row, index) {
+    const sender = messages[index].sender;
     const backdrop = document.createElement("div");
     backdrop.className = "context-backdrop";
-    const bubbleShell = row.querySelector(".message-bubble-shell");
     const overlay = document.createElement("div");
-    overlay.className = `message-context ${messages[index].sender}`;
+    overlay.className = "message-context-layer";
+    const panel = document.createElement("div");
+    panel.className = `message-context-panel ${sender}`;
     const reactionBar = document.createElement("div");
     reactionBar.className = "message-context-reactions";
     QUICK_EMOJIS.forEach((emoji) => {
@@ -624,7 +666,7 @@ function buildContextMenu(row, index) {
         reactionBar.appendChild(button);
     });
     const menu = document.createElement("div");
-    menu.className = `message-context-menu ${messages[index].sender}`;
+    menu.className = `message-context-menu ${sender}`;
     CONTEXT_ACTIONS.forEach((item) => {
         const button = document.createElement("button");
         button.type = "button";
@@ -647,12 +689,19 @@ function buildContextMenu(row, index) {
         });
         menu.appendChild(button);
     });
-    overlay.append(reactionBar, menu);
-    bubbleShell.appendChild(overlay);
+    panel.append(reactionBar, createContextPreview(row, sender), menu);
+    overlay.appendChild(panel);
     backdrop.addEventListener("click", closeContextMenu);
     overlay.addEventListener("click", (event) => event.stopPropagation());
-    document.body.appendChild(backdrop);
-    contextMenu = { backdrop, overlay, row, index };
+    panel.addEventListener("click", (event) => event.stopPropagation());
+    document.body.append(backdrop, overlay);
+    const handleViewportChange = () => positionContextPanel(row, panel, sender);
+    positionContextPanel(row, panel, sender);
+    requestAnimationFrame(handleViewportChange);
+    window.addEventListener("resize", handleViewportChange);
+    window.visualViewport?.addEventListener("resize", handleViewportChange);
+    window.visualViewport?.addEventListener("scroll", handleViewportChange);
+    contextMenu = { backdrop, overlay, row, index, handleViewportChange };
 }
 
 function syncViewportLayout({ preserveScroll = true } = {}) {
