@@ -375,14 +375,6 @@ header>svg {
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-message-emoji-reaction.me {
-    right: 6px !important;
-}
-
-.message-emoji-reaction.other {
-    left: 6px;
-}
-
 .read-receipt-row {
     justify-content: flex-end;
     margin-top: -8px;
@@ -453,24 +445,46 @@ message-emoji-reaction.me {
     width: max-content;
     max-width: calc(100vw - 24px);
     pointer-events: auto;
+}
+
+.message-context-panel.me {
     align-items: flex-end;
     right: 10px !important;
     left: auto !important; 
 }
 
+.message-context-panel.other {
+    align-items: flex-start;
+    left: 10px !important;
+    right: auto !important;
+}
+
 .message-context-preview {
     width: 100%;
+}
+
+.message-context-preview.me .message-row {
     justify-content: flex-end;
+}
+
+.message-context-preview.other .message-row {
+    justify-content: flex-start;
 }
 
 .message-context-preview-row {
     margin: 0 !important;
 }
 
-.message-context-preview .message-bubble,
-.message-context-preview-row .message-bubble {
+.message-context-preview.me .message-bubble,
+.message-context-preview-row.me .message-bubble {
     background: var(--outgoing-bubble);
     color: var(--outgoing-text);
+}
+
+.message-context-preview.other .message-bubble,
+.message-context-preview-row.other .message-bubble {
+    background: var(--incoming-bubble);
+    color: var(--incoming-text);
 }
 
 .message-context-reactions,
@@ -501,7 +515,14 @@ message-emoji-reaction.me {
     max-width: min(220px, calc(100vw - 24px));
     border-radius: 15px;
     overflow: hidden;
+}
+
+.message-context-menu.me {
     margin-right: -2px;
+}
+
+.message-context-menu.other {
+    margin-left: -2px;
 }
 
 .context-emoji-btn,
