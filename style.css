@@ -356,11 +356,6 @@ header>svg {
     margin-top: 1px;
 }
 
-.message-row.group-bottom,
-.message-row.group-single {
-    margin-bottom: 15px;
-}
-
 .message-row.has-reaction-badge {
     margin-bottom: 30px;
 }
@@ -429,11 +424,6 @@ header>svg {
     margin-top: 6px;
 }
 
-.reaction-row.group-bottom,
-.reaction-row.group-single {
-    margin-bottom: 24px;
-}
-
 .reaction-shell {
     min-height: 96px;
 }
@@ -478,13 +468,13 @@ header>svg {
 }
 
 .message-context-panel {
-    position: absolute;
-    display: flex;
-    flex-direction: column;
     gap: 5px;
+    display: flex;
+    position: absolute;
     width: max-content;
-    max-width: calc(100vw - 24px);
     pointer-events: auto;
+    flex-direction: column;
+    max-width: calc(100vw - 24px);
 }
 
 .message-context-panel.me {
@@ -712,8 +702,8 @@ header>span {
     margin-top: 6px;
 }
 
-.reaction-row.group-bottom,
-.reaction-row.group-single {
+.reaction-row.group-bottom.message-row.has-reaction-badge,
+.reaction-row.group-single.message-row.has-reaction-badge {
     margin-bottom: 30px;
 }
 
