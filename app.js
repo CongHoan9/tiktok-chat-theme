@@ -232,6 +232,14 @@ function createReactionBadge(message) {
     return badge;
 }
 
+function applyBubbleTheme(element, sender) {
+    const bubble = element.querySelector(".message-bubble");
+    if (!bubble) {
+        return;
+    }
+    bubble.style.background = sender === "me" ? "var(--outgoing-bubble)" : "var(--incoming-bubble)";
+    bubble.style.color = sender === "me" ? "var(--outgoing-text)" : "var(--incoming-text)";
+}
 
 function createTextBubble(message, position, sender) {
     const shell = document.createElement("div");
@@ -333,6 +341,9 @@ function createMessageRow(message, index) {
     const row = document.createElement("article");
     row.className = `message-row ${message.sender} ${position}`;
     row.dataset.messageIndex = String(index);
+    if (message.reactionEmoji) {
+        row.classList.add("has-reaction-badge");
+    }
 
     if (message.type === "reaction") {
         row.classList.add("reaction-row");
@@ -621,6 +632,7 @@ function createContextPreview(row, sender) {
     previewRow.classList.toggle("other", sender === "other");
     previewRow.removeAttribute("data-message-index");
     previewRow.querySelector(".message-context")?.remove();
+    applyBubbleTheme(previewRow, sender);
     preview.appendChild(previewRow);
 
     return preview;
