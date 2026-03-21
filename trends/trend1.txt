@@ -1,0 +1,92 @@
+[
+  {
+    "me": "Người con gái cho anh cảm xúc khi anh ngâm thơ",
+    "steps": [
+      {
+        "chat": "",
+        "delay": 0,
+        "state": "none"
+      }
+    ]
+  },
+  {
+    "me": "Bao nhiêu anh tiếp cận để xin number",
+    "steps": [
+      {
+        "chat": "",
+        "delay": 2000,
+        "state": "đang nhập"
+      }
+    ]
+  },
+  {
+    "me": "Có em ở cạnh ben ngoài kia có lạnh thêm",
+    "steps": [
+      {
+        "chat": "hogg ạ",
+        "delay": 500,
+        "state": "none"
+      }
+    ]
+  },
+  {
+    "me": "Một năm vẫn có 4 mùa summer",
+    "steps": [
+      {
+        "chat": "",
+        "delay": 1000,
+        "state": "đang nhập"
+      },
+      {
+        "chat": "Loại bơ không thích chính là anh bơ",
+        "delay": 1500,
+        "state": "đang nhập"
+      },
+      {
+        "chat": "Rep tin nhắn nhanh hog để anh chờ ⌛",
+        "delay": 2600,
+        "state": "đang nhập"
+      },
+      {
+        "chat": "Trò chơi đợi anh em là gamer 🎮",
+        "delay": 2600,
+        "state": "đang nhập"
+      },
+      {
+        "chat": "Bắt em đợi lâu em bắn anh giờ 😡😡",
+        "delay": 2600,
+        "state": "đang nhập"
+      },
+      {
+        "chat": "Bài thơ em viết vào một ngày mơ <3",
+        "delay": 2600,
+        "state": "đang nhập"
+      },
+      {
+        "chat": "Ngày mơ có anh cùng ăn BURGER 🍔",
+        "delay": 2600,
+        "state": "đang nhập"
+      },
+      {
+        "chat": "Không muốn có fame muốn có anh cơ!",
+        "delay": 2600,
+        "state": "đang nhập"
+      },
+      {
+        "chat": "Theo anh về nhà trước 22h",
+        "delay": 2600,
+        "state": "đang nhập"
+      },
+      {
+        "chat": "💗",
+        "delay": 1600,
+        "state": "đang nhập"
+      },
+      {
+        "chat": "",
+        "delay": 1600,
+        "state": "none"
+      }
+    ]
+  }
+]

@@ -11,11 +11,15 @@ const stickerBtn = document.getElementById("sticker-button");
 const enterBtn = document.getElementById("enter-button");
 
 const STORAGE_KEY = "tiktok-chat-theme-messages";
+const TREND_MODE_STORAGE_KEY = "tiktok-chat-theme-active-trend";
 const AI_CONFIG_PATH = "ai-model.json";
 const LONG_PRESS_DELAY = 380;
 const TIMESTAMP_GAP_MS = 60 * 60 * 1000;
 const MESSAGE_RENDER_BATCH = 24;
 const MESSAGE_RENDER_STEP = 18;
+const TREND_START_COMMAND = /^\/(?:trend(?:\s+start)?|start\s+trend)\s+([a-z0-9._-]+)\s*$/i;
+const TREND_END_COMMAND = /^\/(?:end|trend(?:\s+(?:off|stop|end|clear|cancel))?|(?:off|stop|end|clear|cancel)\s+trend)\s*$/i;
+const TREND_TYPING_STATES = new Set(["dang nhap", "dangnhap", "typing"]);
 const PROFILE = {
     name: "Người dùng",
     handle: "hoan.naoh",
@@ -117,6 +121,10 @@ let aiReplyTimer = null;
 let isAiTyping = false;
 let aiGenerationRunId = 0;
 let renderedMessageCount = MESSAGE_RENDER_BATCH;
+let activeTrendId = "";
+let activeTrendScript = null;
+
+const trendCache = new Map();
 
 const FALLBACK_AI_CONFIG = {
     profile: {
@@ -174,6 +182,257 @@ const FALLBACK_AI_CONFIG = {
 
 function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
+}
+
+function normalizeTrendName(rawTrendName) {
+    const normalized = String(rawTrendName || "")
+        .trim()
+        .toLowerCase()
+        .replace(/\.(txt|json)$/i, "");
+    if (!normalized) {
+        return "";
+    }
+    if (/^\d+$/.test(normalized)) {
+        return `trend${normalized}`;
+    }
+    return /^[a-z0-9_-]+$/.test(normalized) ? normalized : "";
+}
+
+function normalizeTrendText(text) {
+    return String(text || "")
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .replace(/[đĐ]/g, "d")
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function normalizeTrendStep(rawStep) {
+    if (!rawStep || typeof rawStep !== "object") {
+        return null;
+    }
+
+    return {
+        chat: typeof rawStep.chat === "string" ? rawStep.chat.trim() : "",
+        delay: Math.max(0, Number(rawStep.delay) || 0),
+        state: typeof rawStep.state === "string" ? rawStep.state.trim() : ""
+    };
+}
+
+function normalizeTrendEntry(rawEntry) {
+    if (!rawEntry || typeof rawEntry !== "object" || typeof rawEntry.me !== "string") {
+        return null;
+    }
+
+    const steps = Array.isArray(rawEntry.steps)
+        ? rawEntry.steps.map(normalizeTrendStep).filter(Boolean)
+        : [];
+    if (!steps.length) {
+        return null;
+    }
+
+    return {
+        me: rawEntry.me.trim(),
+        key: normalizeTrendText(rawEntry.me),
+        steps
+    };
+}
+
+function parseTrendEntries(payload) {
+    if (!Array.isArray(payload)) {
+        throw new Error("Trend payload must be an array.");
+    }
+
+    const entries = payload.map(normalizeTrendEntry).filter(Boolean);
+    if (!entries.length) {
+        throw new Error("Trend has no usable entries.");
+    }
+
+    return entries;
+}
+
+async function loadTrendScript(trendName) {
+    const trendId = normalizeTrendName(trendName);
+    if (!trendId) {
+        throw new Error("Trend id is invalid.");
+    }
+    if (trendCache.has(trendId)) {
+        return {
+            id: trendId,
+            entries: trendCache.get(trendId)
+        };
+    }
+
+    const candidatePaths = [
+        `trends/${trendId}.txt`,
+        `trends/${trendId}.json`
+    ];
+
+    let lastError = null;
+    for (const path of candidatePaths) {
+        try {
+            const response = await fetch(path, { cache: "no-store" });
+            if (!response.ok) {
+                lastError = new Error(`HTTP ${response.status}`);
+                continue;
+            }
+
+            const payload = await response.json();
+            const entries = parseTrendEntries(payload);
+            trendCache.set(trendId, entries);
+            return {
+                id: trendId,
+                entries
+            };
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    throw lastError || new Error(`Cannot load trend "${trendId}".`);
+}
+
+function persistTrendMode() {
+    if (activeTrendId) {
+        localStorage.setItem(TREND_MODE_STORAGE_KEY, activeTrendId);
+        return;
+    }
+    localStorage.removeItem(TREND_MODE_STORAGE_KEY);
+}
+
+function isTrendTypingState(state) {
+    const normalizedWithSpaces = normalizeTrendText(state);
+    const normalizedCompact = normalizedWithSpaces.replace(/\s+/g, "");
+    return TREND_TYPING_STATES.has(normalizedWithSpaces)
+        || TREND_TYPING_STATES.has(normalizedCompact)
+        || normalizedCompact.includes("dangnhap")
+        || normalizedCompact.includes("typing");
+}
+
+function isTrendNoneState(state) {
+    const normalized = normalizeTrendText(state).replace(/\s+/g, "");
+    return normalized === "none";
+}
+
+function parseTrendStartCommand(text) {
+    const value = String(text || "").trim();
+    const match = value.match(TREND_START_COMMAND);
+    if (match?.[1]) {
+        return normalizeTrendName(match[1]);
+    }
+    return "";
+}
+
+function isTrendEndCommand(text) {
+    return TREND_END_COMMAND.test(String(text || "").trim());
+}
+
+function isTrendModeActive() {
+    return Boolean(activeTrendId && Array.isArray(activeTrendScript) && activeTrendScript.length);
+}
+
+function cancelTrendMode() {
+    aiGenerationRunId += 1;
+    isAiTyping = false;
+    activeTrendId = "";
+    activeTrendScript = null;
+    persistTrendMode();
+    renderTypingIndicator();
+    if (typeof scrollMessagesToBottom === "function") {
+        scrollMessagesToBottom(true);
+    }
+}
+
+async function startTrendMode(trendName) {
+    const trend = await loadTrendScript(trendName);
+    aiGenerationRunId += 1;
+    isAiTyping = false;
+    activeTrendId = trend.id;
+    activeTrendScript = trend.entries;
+    persistTrendMode();
+    renderTypingIndicator();
+    if (typeof scrollMessagesToBottom === "function") {
+        scrollMessagesToBottom(true);
+    }
+    return trend.entries;
+}
+
+async function initializeTrendMode() {
+    const savedTrendId = normalizeTrendName(localStorage.getItem(TREND_MODE_STORAGE_KEY));
+    if (!savedTrendId) {
+        return;
+    }
+
+    try {
+        const trend = await loadTrendScript(savedTrendId);
+        activeTrendId = trend.id;
+        activeTrendScript = trend.entries;
+        persistTrendMode();
+    } catch (error) {
+        activeTrendId = "";
+        activeTrendScript = null;
+        persistTrendMode();
+        console.error(error);
+    }
+}
+window.initializeTrendMode = initializeTrendMode;
+
+async function handleTrendMessageCore(text) {
+    if (!isTrendModeActive()) {
+        return false;
+    }
+
+    const entry = activeTrendScript.find((item) => item.key === normalizeTrendText(text));
+    if (!entry) {
+        return false;
+    }
+
+    const runId = ++aiGenerationRunId;
+
+    for (const step of entry.steps) {
+        const delay = Math.max(0, step.delay || 0);
+        const shouldShowTyping = isTrendTypingState(step.state);
+        const shouldHideTyping = isTrendNoneState(step.state);
+
+        if (delay > 0) {
+            await sleep(delay);
+        }
+
+        if (runId !== aiGenerationRunId || !isTrendModeActive()) {
+            return false;
+        }
+
+        if (shouldShowTyping && !isAiTyping) {
+            isAiTyping = true;
+            renderTypingIndicator();
+            if (typeof scrollMessagesToBottom === "function") {
+                scrollMessagesToBottom(true);
+            }
+        }
+
+        if (shouldHideTyping && isAiTyping) {
+            isAiTyping = false;
+            renderTypingIndicator();
+            if (typeof scrollMessagesToBottom === "function") {
+                scrollMessagesToBottom(true);
+            }
+        }
+
+        if (!step.chat) {
+            continue;
+        }
+
+        messages.push(createTextMessage(step.chat, "other"));
+        persistMessages();
+        if (typeof appendLatestMessage === "function") {
+            appendLatestMessage();
+        } else {
+            renderTypingIndicator();
+        }
+    }
+
+    return true;
 }
 
 function sleep(ms) {
@@ -720,15 +979,26 @@ class LocalChatAI {
 const localChatAI = new LocalChatAI(FALLBACK_AI_CONFIG);
 
 function createTypingRow() {
-    const wrapper = document.createElement("div");
-    wrapper.className = "message-row other group-single typing-indicator-row";
+    const wrapper = typeof createMessageRow === "function"
+        ? createMessageRow({
+            id: `typing-${Date.now()}`,
+            sender: "other",
+            type: "text",
+            text: "",
+            createdAt: Date.now(),
+            reactionEmoji: ""
+        }, "group-single", { interactive: false })
+        : document.createElement("div");
     wrapper.id = "ai-typing-row";
+    wrapper.classList.add("typing-indicator-row");
 
-    const avatar = createOtherAvatar("group-single");
-    const shell = document.createElement("div");
-    shell.className = "message-bubble-shell";
-    const bubble = document.createElement("div");
+    const shell = wrapper.querySelector(".message-bubble-shell") || document.createElement("div");
+    if (!shell.classList.contains("message-bubble-shell")) {
+        shell.className = "message-bubble-shell";
+    }
+    const bubble = shell.querySelector(".message-bubble") || document.createElement("div");
     bubble.className = "message-bubble typing-row";
+    bubble.textContent = "";
     const dots = document.createElement("div");
     dots.className = "typing-dots";
     for (let index = 0; index < 3; index += 1) {
@@ -737,13 +1007,22 @@ function createTypingRow() {
         dot.style.setProperty("--dot-index", String(index));
         dots.appendChild(dot);
     }
-    bubble.appendChild(dots);
-    shell.appendChild(bubble);
-    wrapper.append(avatar, shell);
+    bubble.replaceChildren(dots);
+    if (!shell.contains(bubble)) {
+        shell.appendChild(bubble);
+    }
+    if (!wrapper.contains(shell)) {
+        wrapper.appendChild(shell);
+    }
     return wrapper;
 }
 
 function renderTypingIndicator() {
+    if (typeof syncTypingIndicatorRow === "function") {
+        syncTypingIndicatorRow();
+        return;
+    }
+
     const existing = document.getElementById("ai-typing-row");
     if (existing) {
         existing.remove();
@@ -762,14 +1041,19 @@ function pickRandomReaction() {
 }
 
 async function scheduleAiReactionReply(reaction) {
+    if (isTrendModeActive()) {
+        return;
+    }
     const runId = ++aiGenerationRunId;
     const typingConfig = localChatAI.typingConfig;
     const startedAt = performance.now();
     isAiTyping = true;
-    renderMessages({ attachReadReceiptToLatest: true });
+    renderTypingIndicator();
     scrollMessagesToBottom(true);
     await sleep(typingConfig.basePause + randomInt(0, typingConfig.jitter));
-    if (runId !== aiGenerationRunId) {
+    if (runId !== aiGenerationRunId || isTrendModeActive()) {
+        isAiTyping = false;
+        renderTypingIndicator();
         return;
     }
 
@@ -778,7 +1062,9 @@ async function scheduleAiReactionReply(reaction) {
         nextMessage = createReactionMessage(pickRandomReaction(), "other");
     } else {
         const reply = await localChatAI.generateReply(`reaction ${reaction}`, messages, runId, () => aiGenerationRunId);
-        if (runId !== aiGenerationRunId || !reply) {
+        if (runId !== aiGenerationRunId || isTrendModeActive() || !reply) {
+            isAiTyping = false;
+            renderTypingIndicator();
             return;
         }
         nextMessage = createTextMessage(reply, "other");
@@ -795,7 +1081,9 @@ async function scheduleAiReactionReply(reaction) {
     if (elapsed < minimumVisible) {
         await sleep(minimumVisible - elapsed);
     }
-    if (runId !== aiGenerationRunId) {
+    if (runId !== aiGenerationRunId || isTrendModeActive()) {
+        isAiTyping = false;
+        renderTypingIndicator();
         return;
     }
     isAiTyping = false;
@@ -818,15 +1106,20 @@ async function loadAiConfig() {
 }
 
 async function scheduleAiReply(prompt) {
+    if (isTrendModeActive()) {
+        return;
+    }
     const runId = ++aiGenerationRunId;
     const typingConfig = localChatAI.typingConfig;
     const startedAt = performance.now();
     isAiTyping = true;
-    renderMessages({ attachReadReceiptToLatest: true });
+    renderTypingIndicator();
     scrollMessagesToBottom(true);
     await sleep(typingConfig.basePause + randomInt(0, typingConfig.jitter));
     const reply = await localChatAI.generateReply(prompt, messages, runId, () => aiGenerationRunId);
-    if (runId !== aiGenerationRunId || !reply) {
+    if (runId !== aiGenerationRunId || isTrendModeActive() || !reply) {
+        isAiTyping = false;
+        renderTypingIndicator();
         return;
     }
     const elapsed = performance.now() - startedAt;
@@ -837,7 +1130,9 @@ async function scheduleAiReply(prompt) {
     if (elapsed < minimumVisible) {
         await sleep(minimumVisible - elapsed);
     }
-    if (runId !== aiGenerationRunId) {
+    if (runId !== aiGenerationRunId || isTrendModeActive()) {
+        isAiTyping = false;
+        renderTypingIndicator();
         return;
     }
     isAiTyping = false;
@@ -852,7 +1147,11 @@ function resetConversation() {
     messages = DEFAULT_MESSAGES.map(normalizeMessage).filter(Boolean);
     renderedMessageCount = Math.min(messages.length, MESSAGE_RENDER_BATCH);
     persistMessages();
-    renderMessages();
+    if (typeof rebuildVisibleMessageNodes === "function") {
+        rebuildVisibleMessageNodes({ attachReadReceiptToLatest: false });
+    } else {
+        renderTypingIndicator();
+    }
     updateComposerState();
     scrollMessagesToBottom(true);
 }

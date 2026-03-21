@@ -113,6 +113,7 @@ header>svg {
     --app-height: 100dvh;
     --viewport-offset-top: 0px;
     --keyboard-inset: 0px;
+    --message-surface-inline-size: calc(100vw - 24px);
     position: fixed;
     top: var(--viewport-offset-top);
     right: 0;
@@ -160,7 +161,7 @@ header>svg {
     width: 29px !important;
     height: 29px !important;
     fill: var(--svg-color) !important;
-    stroke: var(--svg-color)!important;
+    stroke: var(--svg-color) !important;
 }
 
 #theme-settings-back-button svg path {
@@ -202,13 +203,8 @@ header>svg {
 }
 
 .message-surface {
-    --message-surface-inline-size: min(100%, calc(100vw - 24px));
-    width: var(--message-surface-inline-size);
+    width: 100%;
     box-sizing: border-box;
-}
-
-#message-list.message-surface {
-    --message-surface-inline-size: 100%;
 }
 
 #context-root {
@@ -301,19 +297,25 @@ header>svg {
     --bubble-max-inline-size: min(300px, calc(var(--message-surface-inline-size, 100vw) * 0.85));
     --other-content-max-inline-size: var(--bubble-max-inline-size);
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
     align-items: end;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
     width: var(--message-surface-inline-size, 100%);
     max-width: 100%;
     margin-top: 1px;
+    pointer-events: none;
+}
+
+.message-row>* {
+    pointer-events: auto;
 }
 
 .message-content-cluster {
-    display: inline-flex;
+    display: grid;
     align-items: flex-end;
     gap: 5px;
     min-width: 0;
-    width: fit-content;
+    width: max-content;
     max-width: var(--bubble-max-inline-size);
 }
 
@@ -336,39 +338,36 @@ header>svg {
 .message-row.other.type-text:not(.no-avatar-lane),
 .message-row.other.type-image:not(.no-avatar-lane) {
     --other-content-max-inline-size: calc(var(--bubble-max-inline-size) - var(--other-avatar-inline-size) - var(--other-avatar-gap));
-    display: flex;
-    align-items: flex-end;
-    gap: var(--other-avatar-gap);
-    justify-content: flex-start;
-    width: var(--message-surface-inline-size, 100%);
-    max-width: 100%;
-}
-
-.message-row.other.type-text:not(.no-avatar-lane) .message-bubble-shell,
-.message-row.other.type-image:not(.no-avatar-lane) .message-bubble-shell {
-    flex: 0 1 auto;
-    width: fit-content !important;
-    min-width: 0;
-    max-width: var(--other-content-max-inline-size) !important;
 }
 
 .message-row.other.reaction-row {
     --bubble-max-inline-size: min(296px, calc(var(--message-surface-inline-size, 100vw) * 0.68));
+    grid-template-columns: var(--other-avatar-inline-size) max-content;
+    column-gap: var(--other-avatar-gap);
+    justify-content: start;
+    justify-items: start;
+    width: max-content;
+    max-width: var(--bubble-max-inline-size);
 }
 
 .message-row.other.reaction-row .message-content-cluster.other {
-    column-gap: 5px;
+    gap: 5px;
 }
 
 .message-content-cluster.other {
-    width: fit-content;
+    width: max-content;
     max-width: var(--bubble-max-inline-size);
-    justify-self: start;
 }
 
 .message-content-cluster.other.type-text,
 .message-content-cluster.other.type-image {
-    display: block;
+    display: grid;
+    grid-template-columns: var(--other-avatar-inline-size) max-content;
+    align-items: end;
+    column-gap: var(--other-avatar-gap);
+    min-width: 0;
+    width: max-content;
+    max-width: calc(var(--other-avatar-inline-size) + var(--other-avatar-gap) + var(--other-content-max-inline-size));
 }
 
 .message-content-cluster.other.type-reaction {
@@ -380,16 +379,8 @@ header>svg {
     max-width: max-content;
 }
 
-.message-row.other.no-avatar-lane {
-    grid-template-columns: max-content;
-    column-gap: 0;
-    justify-items: start;
-    width: max-content;
-    max-width: var(--bubble-max-inline-size);
-}
-
 .message-context-preview .message-content-cluster.other {
-    width: fit-content;
+    width: max-content;
     max-width: var(--bubble-max-inline-size);
 }
 
@@ -420,16 +411,17 @@ header>svg {
 
 .message-bubble-shell {
     position: relative;
-    display: inline-block;
+    display: block;
     overflow: visible;
-    width: max-content;
+    width: auto;
+    min-width: 0;
     max-width: var(--bubble-max-inline-size);
 }
 
 .message-bubble {
     position: relative;
     width: auto;
-    display: inline-block;
+    display: block;
     max-width: 100%;
     padding: 11px 14px;
     box-sizing: border-box;
@@ -483,23 +475,31 @@ header>svg {
     pointer-events: none;
 }
 
+.typing-indicator-row .message-bubble-shell {
+    min-width: 56px;
+}
+
 .message-bubble.typing-row {
     display: block;
     min-width: 56px;
-    width: 56px;
-    height: 44px;
-    min-height: 44px;
-    padding: 0;
-    line-height: 1;
+    padding: 11px 14px;
+}
+
+.message-bubble.typing-row::before {
+    content: "\00a0";
+    display: block;
+    visibility: hidden;
+    pointer-events: none;
 }
 
 .typing-dots {
     position: absolute;
     inset: 0;
-    display: inline-flex;
+    display: flex;
     align-items: center;
     justify-content: center;
     gap: 5px;
+    pointer-events: none;
 }
 
 .typing-dot {
@@ -515,6 +515,7 @@ header>svg {
 }
 
 @keyframes tiktokTypingDot {
+
     0%,
     60%,
     100% {
@@ -529,7 +530,14 @@ header>svg {
 }
 
 .message-row.other .message-bubble-shell {
-    width: fit-content;
+    width: auto;
+    min-width: 0;
+    max-width: var(--other-content-max-inline-size);
+}
+
+.message-content-cluster.other.type-text .message-bubble-shell,
+.message-content-cluster.other.type-image .message-bubble-shell {
+    width: auto;
     min-width: 0;
     max-width: var(--other-content-max-inline-size);
 }
@@ -767,20 +775,17 @@ header>svg {
 }
 
 .message-context-preview {
-    display: block;
+    display: inline-block;
+    width: auto;
     max-width: min(calc(100vw - 24px), 100%);
     pointer-events: none;
 }
 
 .message-context-preview-row {
     margin: 0 !important;
+    width: auto !important;
+    max-width: 100%;
     pointer-events: none;
-}
-
-.message-context-preview-row.preview-bare {
-    grid-template-columns: max-content;
-    column-gap: 0;
-    justify-items: start;
 }
 
 .message-context-preview .message-bubble-shell,
@@ -928,7 +933,7 @@ header>svg {
     border: none;
     margin: 5px;
     margin-top: 4px;
-    width: calc(100% - 10px) ;
+    width: calc(100% - 10px);
 }
 
 #input>input::placeholder {
@@ -1047,7 +1052,7 @@ header>span {
     display: block;
 }
 
-.settings-screen > :not(.settings-header):not(.settings-subpage-header) {
+.settings-screen> :not(.settings-header):not(.settings-subpage-header) {
     width: min(100%, 460px);
     margin-inline: auto;
     box-sizing: border-box;

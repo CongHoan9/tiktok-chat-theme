@@ -32,6 +32,177 @@ const defaultSettingsToggles = {
     mute_notifications: false,
     pin_to_top: true
 };
+const MEASURED_BUBBLE_STYLE_PROPS = [
+    "box-sizing",
+    "padding-top",
+    "padding-right",
+    "padding-bottom",
+    "padding-left",
+    "border-top-width",
+    "border-right-width",
+    "border-bottom-width",
+    "border-left-width",
+    "font-family",
+    "font-size",
+    "font-style",
+    "font-weight",
+    "font-stretch",
+    "line-height",
+    "letter-spacing",
+    "white-space",
+    "overflow-wrap",
+    "word-break",
+    "word-spacing",
+    "text-transform",
+    "font-kerning",
+    "font-feature-settings",
+    "font-variation-settings",
+    "tab-size"
+];
+
+let bubbleMeasureHost = null;
+let bubbleWidthSyncFrame = 0;
+const pendingBubbleWidthRoots = new Set();
+
+function getBubbleMeasureHost() {
+    if (!bubbleMeasureHost) {
+        bubbleMeasureHost = document.createElement("div");
+        bubbleMeasureHost.className = "message-bubble-measure-host";
+        bubbleMeasureHost.setAttribute("aria-hidden", "true");
+        Object.assign(bubbleMeasureHost.style, {
+            position: "fixed",
+            left: "-10000px",
+            top: "0",
+            visibility: "hidden",
+            pointerEvents: "none",
+            contain: "layout style paint"
+        });
+        document.body.appendChild(bubbleMeasureHost);
+    }
+
+    return bubbleMeasureHost;
+}
+
+function isTextBubbleShell(shell) {
+    if (!(shell instanceof HTMLElement)) {
+        return false;
+    }
+
+    const bubble = shell.querySelector(".message-bubble");
+    return Boolean(
+        bubble
+        && !shell.classList.contains("image-shell")
+        && !shell.classList.contains("reaction-shell")
+        && !bubble.classList.contains("typing-row")
+    );
+}
+
+function copyBubbleMeasurementStyles(source, target) {
+    const computed = window.getComputedStyle(source);
+    MEASURED_BUBBLE_STYLE_PROPS.forEach((property) => {
+        target.style.setProperty(property, computed.getPropertyValue(property));
+    });
+}
+
+function getMaxInlineSize(element) {
+    const maxWidth = Number.parseFloat(window.getComputedStyle(element).maxWidth);
+    return Number.isFinite(maxWidth) ? maxWidth : null;
+}
+
+function measureTextBubbleWidth(shell) {
+    if (!isTextBubbleShell(shell)) {
+        return null;
+    }
+
+    const bubble = shell.querySelector(".message-bubble");
+    const maxInlineSize = getMaxInlineSize(shell) ?? getMaxInlineSize(bubble);
+    if (!maxInlineSize || maxInlineSize <= 0) {
+        return null;
+    }
+
+    const host = getBubbleMeasureHost();
+    host.replaceChildren();
+
+    const clone = bubble.cloneNode(true);
+    copyBubbleMeasurementStyles(bubble, clone);
+    clone.style.setProperty("position", "static");
+    clone.style.setProperty("margin", "0");
+    clone.style.setProperty("display", "inline-block");
+    clone.style.setProperty("width", "max-content");
+    clone.style.setProperty("max-width", "none");
+    clone.style.setProperty("min-width", "0");
+    host.appendChild(clone);
+
+    const roundedMaxInlineSize = Math.max(1, Math.floor(maxInlineSize));
+    const naturalInlineSize = Math.ceil(clone.getBoundingClientRect().width);
+    if (naturalInlineSize <= roundedMaxInlineSize) {
+        host.replaceChildren();
+        return naturalInlineSize;
+    }
+
+    clone.style.setProperty("display", "block");
+    clone.style.setProperty("width", `${roundedMaxInlineSize}px`);
+    clone.style.setProperty("max-width", `${roundedMaxInlineSize}px`);
+
+    const computed = window.getComputedStyle(bubble);
+    const inlineExtras = (Number.parseFloat(computed.paddingLeft) || 0)
+        + (Number.parseFloat(computed.paddingRight) || 0)
+        + (Number.parseFloat(computed.borderLeftWidth) || 0)
+        + (Number.parseFloat(computed.borderRightWidth) || 0);
+
+    const textNode = clone.firstChild;
+    const range = document.createRange();
+    range.selectNodeContents(textNode || clone);
+    const lineRects = [...range.getClientRects()];
+    range.detach?.();
+
+    const widestLine = lineRects.reduce((maxWidth, rect) => {
+        return Math.max(maxWidth, rect.width);
+    }, 0);
+    const measuredInlineSize = widestLine > 0
+        ? Math.min(roundedMaxInlineSize, Math.ceil(widestLine + inlineExtras))
+        : roundedMaxInlineSize;
+
+    host.replaceChildren();
+    return measuredInlineSize;
+}
+
+function syncMeasuredBubbleWidths(root = document) {
+    if (!root || typeof root.querySelectorAll !== "function") {
+        return;
+    }
+
+    const shells = [...root.querySelectorAll(".message-bubble-shell")];
+    shells.forEach((shell) => {
+        shell.style.removeProperty("width");
+    });
+
+    shells.forEach((shell) => {
+        const measuredInlineSize = measureTextBubbleWidth(shell);
+        if (!measuredInlineSize) {
+            return;
+        }
+        shell.style.width = `${measuredInlineSize}px`;
+    });
+}
+
+function scheduleMeasuredBubbleWidthSync(root = document) {
+    pendingBubbleWidthRoots.add(root || document);
+    if (bubbleWidthSyncFrame) {
+        return;
+    }
+
+    bubbleWidthSyncFrame = requestAnimationFrame(() => {
+        bubbleWidthSyncFrame = 0;
+        const roots = [...pendingBubbleWidthRoots];
+        pendingBubbleWidthRoots.clear();
+        roots.forEach((pendingRoot) => {
+            syncMeasuredBubbleWidths(pendingRoot);
+        });
+    });
+}
+
+window.scheduleMeasuredBubbleWidthSync = scheduleMeasuredBubbleWidthSync;
 
 function loadSettingsToggles() {
     try {
@@ -383,25 +554,11 @@ function createStickerReplyChip() {
 }
 
 function createContextPreviewRow(message, layout) {
-    const row = document.createElement("article");
-    row.className = `message-row ${message.sender} ${layout} message-context-preview-row preview-bare`;
-
-    if (message.reactionEmoji) {
-        row.classList.add("has-reaction-badge");
-    }
-
-    let bubbleNode = null;
-    if (message.type === "reaction") {
-        row.classList.add("reaction-row");
-        bubbleNode = createReactionBubble(message);
-    } else if (message.type === "image") {
-        bubbleNode = createImageBubble(message, layout, message.sender);
-    } else {
-        bubbleNode = createTextBubble(message, layout, message.sender);
-    }
-
-    row.appendChild(bubbleNode);
-    return row;
+    return createMessageRow(message, layout, {
+        interactive: false,
+        preview: true,
+        includePreviewAvatar: message.sender === "other"
+    });
 }
 
 function closeContextMenu() {
@@ -465,14 +622,14 @@ function addMessageGestureHandlers(row) {
 }
 
 function createMessageRow(message, layout, options = {}) {
-    const { interactive = true, preview = false, index } = options;
+    const { interactive = true, preview = false, includePreviewAvatar = false, index } = options;
 
     const row = document.createElement("article");
     row.className = `message-row ${message.sender} ${layout}`;
     row.classList.add(`type-${message.type}`);
     if (preview) {
         row.classList.add("message-context-preview-row");
-        if (message.sender === "other") {
+        if (message.sender === "other" && !includePreviewAvatar) {
             row.classList.add("no-avatar-lane");
         }
     }
@@ -496,7 +653,7 @@ function createMessageRow(message, layout, options = {}) {
 
     if (message.sender === "other") {
         if (message.type !== "reaction") {
-            if (!preview) {
+            if (!preview || includePreviewAvatar) {
                 row.append(createOtherAvatar(layout), bubbleNode);
             } else {
                 row.appendChild(bubbleNode);
@@ -511,7 +668,7 @@ function createMessageRow(message, layout, options = {}) {
         if (!preview) {
             content.appendChild(createStickerReplyChip());
         }
-        if (!preview) {
+        if (!preview || includePreviewAvatar) {
             row.append(createOtherAvatar(layout), content);
         } else {
             row.appendChild(content);
@@ -527,6 +684,67 @@ function getLastMineMessageIndex() {
     return [...messages].map((message, index) => ({ message, index }))
         .filter(({ message }) => message.sender === "me")
         .pop()?.index ?? -1;
+}
+
+function getMessageRowNode(index) {
+    return messageList.querySelector(`.message-row[data-message-index="${index}"]`);
+}
+
+function createRenderableMessageRow(index, options = {}) {
+    const message = messages[index];
+    if (!message) {
+        return null;
+    }
+
+    const layout = computeMessageLayout(message, {
+        previous: messages[index - 1],
+        next: messages[index + 1]
+    });
+    const row = createMessageRow(message, layout, { index, ...options });
+    const previous = messages[index - 1];
+    if (previous && previous.sender !== message.sender) {
+        row.classList.add("sender-break");
+    }
+    return row;
+}
+
+function getAcceptedNoticeRow() {
+    return messageList.querySelector(".system-row");
+}
+
+function syncLeadingStaticRows() {
+    const noticeRow = getAcceptedNoticeRow();
+    if (!noticeRow) {
+        return;
+    }
+
+    const shouldShowIntro = getVisibleStartIndex() === 0;
+    const existingIntro = messageList.querySelector(".chat-intro");
+
+    if (shouldShowIntro) {
+        if (!existingIntro) {
+            noticeRow.insertAdjacentElement("beforebegin", createChatIntroBlock());
+        }
+        const existingLeadingTimestamp = noticeRow.previousElementSibling?.classList.contains("time-divider-row")
+            ? noticeRow.previousElementSibling
+            : null;
+        if (messages[0]) {
+            const nextTimestamp = createTimestampRow(messages[0].createdAt);
+            if (existingLeadingTimestamp) {
+                existingLeadingTimestamp.replaceWith(nextTimestamp);
+            } else {
+                noticeRow.insertAdjacentElement("beforebegin", nextTimestamp);
+            }
+        } else {
+            existingLeadingTimestamp?.remove();
+        }
+        return;
+    }
+
+    existingIntro?.remove();
+    if (noticeRow.previousElementSibling?.classList.contains("time-divider-row")) {
+        noticeRow.previousElementSibling.remove();
+    }
 }
 
 function createReadReceiptRow(messageIndex, attachToLatest = false) {
@@ -546,22 +764,112 @@ function createReadReceiptRow(messageIndex, attachToLatest = false) {
     return row;
 }
 
-function replaceMessageRow(index) {
-    const message = messages[index];
-    if (!message) {
+const MESSAGE_LAYOUT_CLASS_NAMES = ["group-top", "group-middle", "group-bottom", "group-single"];
+
+function syncBubbleTailForRow(row, message, layout) {
+    if (!row || !message || message.type === "reaction") {
         return;
     }
 
-    const currentRow = messageList.children[index];
-    if (!currentRow) {
+    const shell = row.querySelector(".message-bubble-shell:not(.reaction-shell)");
+    if (!shell) {
         return;
     }
+
+    const currentTail = shell.querySelector(".message-tail");
+    const shouldHaveTail = layout === "group-bottom" || layout === "group-single";
+
+    if (!shouldHaveTail) {
+        currentTail?.remove();
+        return;
+    }
+
+    if (currentTail) {
+        currentTail.className = `message-tail ${message.sender}`;
+        return;
+    }
+
+    const tail = document.createElement("span");
+    tail.className = `message-tail ${message.sender}`;
+    shell.appendChild(tail);
+}
+
+function updateMessageRowLayout(index) {
+    const row = getMessageRowNode(index);
+    const message = messages[index];
+    if (!row || !message) {
+        return null;
+    }
+
     const layout = computeMessageLayout(message, {
         previous: messages[index - 1],
         next: messages[index + 1]
     });
-    const nextRow = createMessageRow(message, layout, { index });
+
+    row.classList.remove(...MESSAGE_LAYOUT_CLASS_NAMES);
+    row.classList.add(layout);
+    row.classList.toggle("sender-break", Boolean(messages[index - 1] && messages[index - 1].sender !== message.sender));
+
+    if (message.sender === "other" && message.type !== "reaction") {
+        const avatarSlot = row.querySelector(".message-avatar-slot");
+        if (avatarSlot) {
+            avatarSlot.replaceWith(createOtherAvatar(layout));
+        }
+    }
+
+    syncBubbleTailForRow(row, message, layout);
+    return row;
+}
+
+function syncReadReceiptRow({ attachToLatest = false } = {}) {
+    const existing = messageList.querySelector(".read-receipt-row");
+    const lastMineIndex = getLastMineMessageIndex();
+    if (lastMineIndex < 0) {
+        existing?.remove();
+        return null;
+    }
+
+    const anchor = getMessageRowNode(lastMineIndex);
+    if (!anchor) {
+        existing?.remove();
+        return null;
+    }
+
+    const readReceipt = existing || createReadReceiptRow(lastMineIndex, attachToLatest);
+    readReceipt.className = `read-receipt-row${attachToLatest ? " attached" : ""}`;
+    readReceipt.dataset.forMessageIndex = String(lastMineIndex);
+    anchor.insertAdjacentElement("afterend", readReceipt);
+    return readReceipt;
+}
+
+function syncTypingIndicatorRow() {
+    const existing = document.getElementById("ai-typing-row");
+    if (!isAiTyping) {
+        existing?.remove();
+        return null;
+    }
+
+    const typingRow = existing || createTypingRow();
+    messageList.appendChild(typingRow);
+    scheduleMeasuredBubbleWidthSync(typingRow);
+    return typingRow;
+}
+window.syncTypingIndicatorRow = syncTypingIndicatorRow;
+
+function replaceMessageRow(index) {
+    const message = messages[index];
+    if (!message) {
+        return null;
+    }
+
+    const currentRow = getMessageRowNode(index);
+    if (!currentRow) {
+        return null;
+    }
+
+    const nextRow = createRenderableMessageRow(index);
     currentRow.replaceWith(nextRow);
+    return nextRow;
 }
 
 function getScrollBottomGap() {
@@ -587,10 +895,35 @@ function loadOlderMessages() {
     if (!canLoadOlderMessages()) {
         return false;
     }
+
+    const previousVisibleStartIndex = getVisibleStartIndex();
     const previousHeight = messageList.scrollHeight;
     const previousTop = messageList.scrollTop;
     renderedMessageCount = Math.min(messages.length, renderedMessageCount + MESSAGE_RENDER_STEP);
-    renderMessages();
+    const nextVisibleStartIndex = getVisibleStartIndex();
+    syncLeadingStaticRows();
+
+    const noticeRow = getAcceptedNoticeRow();
+    const fragment = document.createDocumentFragment();
+    const insertedRows = [];
+    for (let index = nextVisibleStartIndex; index < previousVisibleStartIndex; index += 1) {
+        if (index > 0 && shouldRenderTimestamp(index)) {
+            fragment.appendChild(createTimestampRow(messages[index].createdAt));
+        }
+        const row = createRenderableMessageRow(index);
+        fragment.appendChild(row);
+        insertedRows.push(row);
+    }
+
+    if (noticeRow?.parentNode) {
+        noticeRow.parentNode.insertBefore(fragment, noticeRow.nextSibling);
+    }
+
+    if (previousVisibleStartIndex < messages.length) {
+        updateMessageRowLayout(previousVisibleStartIndex);
+    }
+
+    insertedRows.forEach((row) => scheduleMeasuredBubbleWidthSync(row));
     requestAnimationFrame(() => {
         const nextHeight = messageList.scrollHeight;
         messageList.scrollTop = previousTop + (nextHeight - previousHeight);
@@ -616,7 +949,7 @@ function scrollMessagesToBottom(force = false) {
     requestAnimationFrame(scrollToBottom);
 }
 
-function renderMessages({ attachReadReceiptToLatest = false } = {}) {
+function initializeMessageList({ attachReadReceiptToLatest = false } = {}) {
     messageList.innerHTML = "";
     renderedMessageCount = Math.min(messages.length, Math.max(MESSAGE_RENDER_BATCH, renderedMessageCount));
     const visibleStartIndex = getVisibleStartIndex();
@@ -639,15 +972,7 @@ function renderMessages({ attachReadReceiptToLatest = false } = {}) {
         if (index > visibleStartIndex && shouldRenderTimestamp(index)) {
             messageList.appendChild(createTimestampRow(message.createdAt));
         }
-        const layout = computeMessageLayout(message, {
-            previous: messages[index - 1],
-            next: messages[index + 1]
-        });
-        const row = createMessageRow(message, layout, { index });
-        const previous = messages[index - 1];
-        if (previous && previous.sender !== message.sender) {
-            row.classList.add("sender-break");
-        }
+        const row = createRenderableMessageRow(index);
         messageList.appendChild(row);
         if (index === lastMineIndex) {
             const readReceipt = createReadReceiptRow(index, attachReadReceiptToLatest);
@@ -656,7 +981,52 @@ function renderMessages({ attachReadReceiptToLatest = false } = {}) {
             }
         }
     });
-    renderTypingIndicator();
+    syncTypingIndicatorRow();
+    scheduleMeasuredBubbleWidthSync(messageList);
+}
+
+function rebuildVisibleMessageNodes({ attachReadReceiptToLatest = false } = {}) {
+    const noticeRow = getAcceptedNoticeRow();
+    if (!noticeRow) {
+        initializeMessageList({ attachReadReceiptToLatest });
+        return;
+    }
+
+    messageList.querySelectorAll(".message-row, .time-divider-row, .read-receipt-row, .chat-intro").forEach((node) => node.remove());
+    syncLeadingStaticRows();
+
+    const visibleStartIndex = getVisibleStartIndex();
+    const fragment = document.createDocumentFragment();
+    const lastMineIndex = getLastMineMessageIndex();
+
+    for (let index = visibleStartIndex; index < messages.length; index += 1) {
+        if (index > visibleStartIndex && shouldRenderTimestamp(index)) {
+            fragment.appendChild(createTimestampRow(messages[index].createdAt));
+        }
+        const row = createRenderableMessageRow(index);
+        fragment.appendChild(row);
+        if (index === lastMineIndex) {
+            const readReceipt = createReadReceiptRow(index, attachReadReceiptToLatest);
+            if (readReceipt) {
+                fragment.appendChild(readReceipt);
+            }
+        }
+    }
+
+    if (noticeRow.parentNode) {
+        noticeRow.parentNode.insertBefore(fragment, noticeRow.nextSibling);
+    }
+    syncTypingIndicatorRow();
+    scheduleMeasuredBubbleWidthSync(messageList);
+}
+
+function renderMessages({ attachReadReceiptToLatest = false } = {}) {
+    if (getAcceptedNoticeRow()) {
+        rebuildVisibleMessageNodes({ attachReadReceiptToLatest });
+        return;
+    }
+
+    initializeMessageList({ attachReadReceiptToLatest });
 }
 
 function createTextMessage(text, sender = "me") {
@@ -738,26 +1108,84 @@ function canGroupWithNeighbor(current, neighbor) {
 
 function appendLatestMessage() {
     ensureRenderWindowCoversLatest(1);
-    renderMessages({ attachReadReceiptToLatest: true });
+    if (!getAcceptedNoticeRow()) {
+        initializeMessageList({ attachReadReceiptToLatest: true });
+        scrollMessagesToBottom(true);
+        return;
+    }
+
+    const latestIndex = messages.length - 1;
+    if (latestIndex < 0) {
+        return;
+    }
+
+    syncLeadingStaticRows();
+
+    const previousIndex = latestIndex - 1;
+    let previousRow = null;
+    if (previousIndex >= getVisibleStartIndex()) {
+        previousRow = updateMessageRowLayout(previousIndex);
+    }
+
+    const latestMessage = messages[latestIndex];
+    const leadingTimestampAlreadyRendered = latestIndex === 0 && getVisibleStartIndex() === 0;
+    if (!leadingTimestampAlreadyRendered && shouldRenderTimestamp(latestIndex)) {
+        messageList.appendChild(createTimestampRow(latestMessage.createdAt));
+    }
+
+    const latestRow = createRenderableMessageRow(latestIndex);
+    messageList.appendChild(latestRow);
+
+    syncReadReceiptRow({ attachToLatest: true });
+    syncTypingIndicatorRow();
+
+    if (previousRow) {
+        scheduleMeasuredBubbleWidthSync(previousRow);
+    }
+    scheduleMeasuredBubbleWidthSync(latestRow);
     scrollMessagesToBottom(true);
 }
 
-function persistMessages() {
-    saveMessages();
-}
-
-function handleSendMessage() {
+async function handleSendMessage() {
     const text = inputBox.value.trim();
     if (!text) return;
+
+    if (typeof isTrendEndCommand === "function" && isTrendEndCommand(text)) {
+        cancelTrendMode();
+        inputBox.value = "";
+        updateComposerState();
+        inputBox.focus();
+        return;
+    }
+
+    const trendId = typeof parseTrendStartCommand === "function"
+        ? parseTrendStartCommand(text)
+        : "";
+    if (trendId) {
+        try {
+            await startTrendMode(trendId);
+        } catch (error) {
+            console.error(error);
+        }
+        inputBox.value = "";
+        updateComposerState();
+        inputBox.focus();
+        return;
+    }
 
     messages.push(createTextMessage(text, "me"));
     persistMessages();
     appendLatestMessage();
-    scheduleAiReply(text);
-
     inputBox.value = "";
     updateComposerState();
     inputBox.focus();
+
+    if (typeof isTrendModeActive === "function" && isTrendModeActive()) {
+        await handleTrendMessageCore(text);
+        return;
+    }
+
+    scheduleAiReply(text);
 }
 
 function triggerReactionBurst(reaction, sourceButton) {
@@ -774,6 +1202,9 @@ function handleSendReaction(reaction) {
     messages.push(createReactionMessage(reaction, "me"));
     persistMessages();
     appendLatestMessage();
+    if (typeof isTrendModeActive === "function" && isTrendModeActive()) {
+        return;
+    }
     scheduleAiReactionReply(reaction);
 }
 
@@ -830,7 +1261,7 @@ function deleteMessage(index) {
     renderedMessageCount = Math.min(messages.length, Math.max(MESSAGE_RENDER_BATCH, renderedMessageCount));
     persistMessages();
     closeContextMenu();
-    renderMessages();
+    rebuildVisibleMessageNodes({ attachReadReceiptToLatest: false });
 }
 
 function resolveContextIconKey(item, actionIndex = -1) {
@@ -921,7 +1352,12 @@ function setMessageReaction(index, emoji) {
     }
     persistMessages();
     closeContextMenu();
-    renderMessages();
+    const nextRow = replaceMessageRow(index);
+    if (nextRow) {
+        scheduleMeasuredBubbleWidthSync(nextRow);
+    }
+    syncReadReceiptRow({ attachToLatest: true });
+    syncTypingIndicatorRow();
 }
 
 function createContextPreview(index) {
@@ -931,48 +1367,32 @@ function createContextPreview(index) {
     }
     const preview = document.createElement("div");
     preview.className = "message-context-preview";
-    const currentRow = messageList.querySelector(`[data-message-index="${index}"]`);
-    if (currentRow) {
-        const clonedRow = currentRow.cloneNode(true);
-        clonedRow.classList.add("message-context-preview-row");
-        clonedRow.removeAttribute("data-message-index");
-        clonedRow.querySelector(".sticker-reply-chip")?.remove();
-        const rowComputed = window.getComputedStyle(currentRow);
-        const sourceBubble = currentRow.querySelector(".message-bubble");
-        const clonedBubble = clonedRow.querySelector(".message-bubble");
-        const surfaceInlineSize = rowComputed.getPropertyValue("--message-surface-inline-size").trim();
-        const bubbleMaxInlineSize = rowComputed.getPropertyValue("--bubble-max-inline-size").trim();
-        const otherContentMaxInlineSize = rowComputed.getPropertyValue("--other-content-max-inline-size").trim();
-        if (surfaceInlineSize) {
-            clonedRow.style.setProperty("--message-surface-inline-size", surfaceInlineSize);
-        }
-        if (bubbleMaxInlineSize) {
-            clonedRow.style.setProperty("--bubble-max-inline-size", bubbleMaxInlineSize);
-        }
-        if (otherContentMaxInlineSize) {
-            clonedRow.style.setProperty("--other-content-max-inline-size", otherContentMaxInlineSize);
-        }
-        if (sourceBubble && clonedBubble) {
-            const computed = window.getComputedStyle(sourceBubble);
-            clonedBubble.style.fontFamily = computed.fontFamily;
-            clonedBubble.style.fontSize = computed.fontSize;
-            clonedBubble.style.fontWeight = computed.fontWeight;
-            clonedBubble.style.lineHeight = computed.lineHeight;
-            clonedBubble.style.letterSpacing = computed.letterSpacing;
-            clonedBubble.style.fontKerning = computed.fontKerning;
-            clonedBubble.style.textTransform = computed.textTransform;
-            clonedBubble.style.fontFeatureSettings = computed.fontFeatureSettings;
-            clonedBubble.style.fontVariationSettings = computed.fontVariationSettings;
-        }
-        preview.appendChild(clonedRow);
-        return preview;
-    }
-
     const layout = computeMessageLayout(message, {
         previous: messages[index - 1],
         next: messages[index + 1]
     });
-    preview.appendChild(createContextPreviewRow(message, layout));
+    const previewRow = createContextPreviewRow(message, layout);
+    const currentRow = messageList.querySelector(`[data-message-index="${index}"]`);
+    if (currentRow) {
+        const sourceBubble = currentRow.querySelector(".message-bubble");
+        const previewBubble = previewRow.querySelector(".message-bubble");
+        if (sourceBubble && previewBubble) {
+            const computed = window.getComputedStyle(sourceBubble);
+            previewBubble.style.fontFamily = computed.fontFamily;
+            previewBubble.style.fontSize = computed.fontSize;
+            previewBubble.style.fontWeight = computed.fontWeight;
+            previewBubble.style.lineHeight = computed.lineHeight;
+            previewBubble.style.letterSpacing = computed.letterSpacing;
+            previewBubble.style.fontKerning = computed.fontKerning;
+            previewBubble.style.textTransform = computed.textTransform;
+            previewBubble.style.fontFeatureSettings = computed.fontFeatureSettings;
+            previewBubble.style.fontVariationSettings = computed.fontVariationSettings;
+        }
+        preview.appendChild(previewRow);
+        return preview;
+    }
+
+    preview.appendChild(previewRow);
     return preview;
 }
 
@@ -1122,7 +1542,11 @@ function buildContextMenu(row, index) {
     menu.addEventListener("click", (event) => event.stopPropagation());
     contextRoot.append(backdrop, overlay);
     messageList.classList.add("context-scroll-locked");
-    const handleViewportChange = () => positionContextPanel(row, panel, sender);
+    syncMeasuredBubbleWidths(panel);
+    const handleViewportChange = () => {
+        syncMeasuredBubbleWidths(panel);
+        positionContextPanel(row, panel, sender);
+    };
     positionContextPanel(row, panel, sender);
     requestAnimationFrame(handleViewportChange);
     window.addEventListener("resize", handleViewportChange);

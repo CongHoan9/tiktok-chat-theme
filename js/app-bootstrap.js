@@ -12,6 +12,9 @@ function syncViewportLayout({ preserveScroll = true } = {}) {
         chatPage.style.setProperty("--keyboard-inset", `${keyboardInset}px`);
         chatPage.classList.toggle("keyboard-open", keyboardInset > 0);
         viewportState.lastKnownKeyboardInset = keyboardInset;
+        if (typeof scheduleMeasuredBubbleWidthSync === "function") {
+            scheduleMeasuredBubbleWidthSync(messageList);
+        }
         if (preserveScroll) {
             restoreScrollBottomGap(viewportState.lockedBottomGap);
         }
@@ -66,13 +69,23 @@ if (window.visualViewport) {
     window.visualViewport.addEventListener("scroll", () => syncViewportLayout({ preserveScroll: true }));
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
     syncSharedProfileUI();
     initializeSettingsToggles();
     preloadImages();
     loadMessages();
-    renderMessages();
+    await window.initializeTrendMode?.();
+    initializeMessageList();
     updateComposerState();
     syncViewportLayout({ preserveScroll: false });
     scrollMessagesToBottom(true);
+});
+
+window.addEventListener("load", () => {
+    if (typeof scheduleMeasuredBubbleWidthSync === "function") {
+        scheduleMeasuredBubbleWidthSync(messageList);
+        requestAnimationFrame(() => {
+            scheduleMeasuredBubbleWidthSync(messageList);
+        });
+    }
 });
