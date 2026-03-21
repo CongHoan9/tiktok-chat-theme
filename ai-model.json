@@ -1,0 +1,268 @@
+{
+    "profile": {
+        "name": "Mini GPT Tĩnh",
+        "description": "Bộ sinh phản hồi cục bộ chạy hoàn toàn bằng JavaScript và JSON trên static web.",
+        "typingDelay": {
+            "basePause": 250,
+            "stepPause": 25,
+            "jitter": 170,
+            "minVisible": 720,
+            "maxVisible": 2600
+        }
+    },
+    "generation": {
+        "minTokens": 11,
+        "maxTokens": 36,
+        "temperature": 0.86,
+        "promptBias": 5.2,
+        "historyBias": 2.4,
+        "topicBias": 2.8,
+        "pairBias": 2.1,
+        "repetitionPenalty": 1.48,
+        "endingBias": 3.0,
+        "fallbackBias": 0.74,
+        "stopChance": 0.18,
+        "seedLength": 2
+    },
+    "starters": [
+        "ừ",
+        "nghe",
+        "đúng",
+        "chuẩn",
+        "haha",
+        "mình",
+        "thật ra",
+        "kiểu",
+        "vậy à",
+        "ui",
+        "ồ",
+        "cũng"
+    ],
+    "fillers": [
+        "thật",
+        "khá",
+        "rất",
+        "cũng",
+        "vẫn",
+        "luôn",
+        "hơi",
+        "nữa",
+        "mà",
+        "đó",
+        "nè",
+        "á",
+        "thôi"
+    ],
+    "endings": [
+        ".",
+        "!",
+        "?",
+        "nhỉ",
+        "nha",
+        "đấy",
+        "đó",
+        "ha"
+    ],
+    "topics": {
+        "weather": {
+            "keywords": [
+                "trời",
+                "nắng",
+                "mưa",
+                "gió",
+                "mây",
+                "thời tiết",
+                "đẹp",
+                "lạnh",
+                "nóng",
+                "chiều",
+                "sáng"
+            ],
+            "corpus": [
+                "trời đẹp kiểu này làm người ta chỉ muốn đi chậm lại để ngắm thêm một chút.",
+                "nếu có nắng nhẹ với gió mát thì tâm trạng thường sáng lên rất nhanh.",
+                "buổi chiều có mây mỏng và ánh sáng dịu luôn tạo cảm giác dễ chịu hơn hẳn.",
+                "mưa nhỏ đôi khi lại khiến cuộc trò chuyện nghe mềm và gần hơn.",
+                "không khí mát sau cơn mưa làm mọi thứ như bớt ồn một nhịp.",
+                "khi bạn nhắc đến bầu trời đẹp mình thường nghiêng sang những từ như trong mát và yên.",
+                "nắng đẹp nhưng không gắt thì đúng là một kiểu dễ thương rất riêng.",
+                "gió nhẹ và ánh trời trong thường kéo theo những câu nói nghe thư hơn bình thường."
+            ]
+        },
+        "mood": {
+            "keywords": [
+                "vui",
+                "buồn",
+                "mệt",
+                "chán",
+                "tâm trạng",
+                "stress",
+                "ổn",
+                "happy",
+                "khó chịu",
+                "cô đơn"
+            ],
+            "corpus": [
+                "một câu dịu thôi cũng đủ làm cảm xúc bớt nặng đi đôi chút.",
+                "niềm vui nhỏ thường lan rất nhanh trong một đoạn chat ngắn.",
+                "khi chủ đề chạm vào cảm xúc mình sẽ ưu tiên những từ mềm và gần hơn.",
+                "nếu đang mệt thì một nhịp nói chuyện nhẹ có khi lại dễ thở hơn nhiều.",
+                "cảm xúc không cần hoàn hảo chỉ cần được nói ra đúng lúc là đã khác rồi.",
+                "có những hôm chỉ cần ai đó đáp lại ấm áp một chút là mood đổi hẳn.",
+                "mình thích những câu trả lời nghe như đang ngồi cạnh nhau nói chuyện hơn là quá cứng.",
+                "khi tâm trạng được nhắc đến câu chữ nên dịu một chút để cuộc chat đỡ lạnh hơn."
+            ]
+        },
+        "plan": {
+            "keywords": [
+                "mai",
+                "ngày mai",
+                "kế hoạch",
+                "đi",
+                "làm",
+                "học",
+                "chuẩn bị",
+                "tối nay",
+                "cuối tuần",
+                "sắp tới"
+            ],
+            "corpus": [
+                "nếu chủ đề là kế hoạch mình hay nối bằng các từ như thử bắt đầu rồi tiếp theo sau đó.",
+                "một kế hoạch nghe hợp lý khi từng bước được nói ra nhẹ nhàng và rõ ràng.",
+                "đôi khi chỉ cần chốt một bước đầu tiên là mọi thứ bớt rối hơn nhiều.",
+                "nói về lịch trình thì những từ như mai tối nay và cuối tuần thường kéo hướng câu trả lời đi tiếp.",
+                "mình hay ưu tiên cảm giác thực tế vừa đủ để kế hoạch nghe gần với cuộc sống hơn.",
+                "nếu bạn đang phân vân giữa nhiều lựa chọn thì bắt đầu từ điều dễ nhất cũng ổn.",
+                "khi có một điểm khởi đầu rõ ràng câu chuyện về kế hoạch sẽ bớt mơ hồ ngay.",
+                "điều quan trọng nhất thường là bước tiếp theo chứ chưa cần giải hết cả tuần."
+            ]
+        },
+        "music": {
+            "keywords": [
+                "nhạc",
+                "bài",
+                "hát",
+                "giai điệu",
+                "beat",
+                "rap",
+                "ca khúc",
+                "playlist",
+                "nghe"
+            ],
+            "corpus": [
+                "nếu chủ đề là âm nhạc mình sẽ dễ gọi lại các từ như nhịp giai điệu đoạn hook và cảm giác.",
+                "có những bài hát nghe một lần thì vui nhưng nghe đêm xuống lại thành rất khác.",
+                "một giai điệu hợp mood thường khiến câu trả lời nghiêng về cảm giác nhiều hơn lý do.",
+                "playlist hay là playlist khiến người ta muốn kể thêm vài chuyện nhỏ cùng lúc.",
+                "nhạc có nhịp êm thường làm đoạn chat nghe cũng mềm đi theo.",
+                "đôi khi chỉ cần nhắc tên một bài thôi là cả không khí đổi hướng ngay."
+            ]
+        },
+        "food": {
+            "keywords": [
+                "ăn",
+                "uống",
+                "đói",
+                "ngon",
+                "trà sữa",
+                "cà phê",
+                "bún",
+                "phở",
+                "đồ ăn",
+                "quán"
+            ],
+            "corpus": [
+                "nói đến đồ ăn là câu chữ tự nhiên trở nên gần gũi hơn vì ai cũng có một món thích riêng.",
+                "đói nhẹ vào chiều muộn luôn làm người ta nghĩ đến thứ gì đó ấm hoặc ngọt.",
+                "một món ngon thường kéo theo cả mùi vị lẫn bối cảnh trong trí nhớ.",
+                "nếu nhắc đến cà phê hay trà sữa thì câu trả lời dễ nghiêng sang cảm giác thư giãn hơn.",
+                "có những món chỉ nghe tên thôi là đã thấy muốn rủ ai đó đi ăn rồi."
+            ]
+        },
+        "sleep": {
+            "keywords": [
+                "ngủ",
+                "buồn ngủ",
+                "thức",
+                "khuya",
+                "sáng sớm",
+                "mất ngủ",
+                "mơ"
+            ],
+            "corpus": [
+                "những câu chuyện về giấc ngủ thường mang nhịp chậm và hơi lơ mơ một chút.",
+                "thức khuya quá thì mọi suy nghĩ nghe cũng mềm và xa hơn bình thường.",
+                "có những đêm chỉ cần một câu hỏi nhẹ là thành cả đoạn tâm sự dài.",
+                "buồn ngủ nhưng vẫn muốn nói thêm vài câu là một cảm giác rất thật trong chat."
+            ]
+        }
+    },
+    "corpus": [
+        "mình không lấy sẵn một câu trả lời cố định mà ghép token mới theo xác suất đi cùng nhau.",
+        "nếu bạn đổi chủ đề giữa chừng mình sẽ ưu tiên điều vừa nhắn hơn lịch sử cũ.",
+        "mỗi phản hồi đều được tạo mới ngay lúc bạn gửi tin nhắn trên static web này.",
+        "mình nhìn vào những từ vừa xuất hiện gần đây để tăng khả năng chúng quay lại đúng lúc hơn.",
+        "khi cuộc trò chuyện đi đủ lâu mô hình nhỏ này sẽ có thêm lịch sử để bám theo nên nghe đỡ rời hơn.",
+        "đôi khi câu trả lời sẽ hơi bất ngờ vì xác suất luôn giữ lại một phần ngẫu nhiên bên trong.",
+        "một chuỗi Markov nhỏ vẫn có thể tạo cảm giác đang đối thoại nếu dữ liệu đủ dày và gần chủ đề.",
+        "mình thích những phản hồi nghe như được nối tiếp từ nhịp trước đó chứ không rơi ra khỏi cuộc nói chuyện.",
+        "nếu bạn nhắn câu ngắn mình vẫn sẽ cố kéo thêm vài token liên quan để câu trả lời đầy hơn.",
+        "khi bạn dùng từ tích cực thì những từ sáng hơn cũng có xu hướng được chọn lại nhiều hơn.",
+        "nếu câu chat mang hơi hướng đùa vui thì các token nhẹ và thoải mái thường nổi lên trước.",
+        "mỗi lượt sinh đều bắt đầu bằng vài hạt giống từ prompt rồi lan dần sang các cụm gần chúng.",
+        "những cặp token xuất hiện cạnh nhau nhiều lần sẽ có sức kéo mạnh hơn ở bước chọn từ kế tiếp.",
+        "mình dùng lịch sử rất gần để tránh việc câu mới bị lạc sang chuyện cũ quá xa.",
+        "nếu vừa nói về một buổi chiều đẹp thì các từ như mát trong nhẹ trời thường có lợi thế hơn.",
+        "nếu vừa nói về một kế hoạch thì các từ như thử mai trước tiếp theo lại nổi bật hơn.",
+        "một phản hồi nghe tự nhiên thường không cần quá dài chỉ cần đúng nhịp và đúng cụm từ.",
+        "mình có thể lặp lại một vài token quen thuộc nhưng sẽ tự giảm trọng số nếu lặp quá nhiều.",
+        "mục tiêu của bộ sinh này là tạo câu mới chứ không lấy một đáp án nguyên mẫu đã viết sẵn.",
+        "những tin nhắn gần nhất giống như vùng ảnh hưởng mạnh nhất của câu trả lời tiếp theo.",
+        "khi câu chuyện đang ấm thì mình sẽ dễ sinh ra những từ nghe mềm và gần hơn.",
+        "khi câu chuyện đang vui thì dấu chấm than và những cụm ngắn thường xuất hiện nhiều hơn một chút.",
+        "mình cũng có thể bắt đầu từ chính một từ trong tin nhắn của bạn rồi kéo ra thành cả ý.",
+        "thỉnh thoảng câu sinh ra sẽ lệch nhẹ nhưng nó vẫn là câu mới được tạo trong lúc bạn nhắn.",
+        "càng nhiều ví dụ gần gũi trong json thì phản hồi càng đỡ khô và đỡ máy móc.",
+        "nếu đang nói chuyện rất đời thường thì những từ bình dị thường nghe hợp hơn các từ quá trang trọng.",
+        "một đoạn chat tốt thường có chút nhịp điệu chứ không chỉ là thông tin thuần túy.",
+        "mình thiên về việc trả lời như một người đang tiếp lời hơn là như một bảng dữ liệu khô.",
+        "có lúc một cụm từ ngắn thôi cũng đủ giữ được mạch hội thoại đang chạy rất ổn.",
+        "bạn càng nhắn rõ cảm giác hoặc chủ đề thì hướng sinh càng dễ bám sát hơn.",
+        "nếu chủ đề vừa đổi rất mạnh thì phản hồi mới cũng nên quay đầu ngay để khỏi bị chậm nhịp.",
+        "mình cố giữ câu trả lời đủ linh hoạt để cùng một prompt vẫn có thể cho ra nhiều câu khác nhau.",
+        "những từ ở cuối prompt thường có ảnh hưởng rõ vì chúng là tín hiệu gần nhất.",
+        "khi các token về cùng một chủ đề xuất hiện liên tiếp chúng sẽ tự tạo thành dòng chảy khá tự nhiên.",
+        "bộ sinh nhỏ này chỉ chạy bằng js và json nên mọi thứ đều nằm ngay trên static web.",
+        "không cần server hay api vẫn có thể tạo cảm giác ai đang phản hồi thật sự trong cuộc chat.",
+        "nếu bạn gửi thêm tin nhắn khi mình đang sinh thì hướng cũ nên bị bỏ để ưu tiên điều mới hơn.",
+        "đó là lý do luồng sinh phải được ngắt và bắt đầu lại từ prompt mới nhất của bạn.",
+        "mỗi câu trả lời là kết quả của việc chọn token kế tiếp theo tỉ lệ rồi làm sạch lại thành câu hoàn chỉnh.",
+        "nhiều mẫu câu ngắn nhưng đa dạng thường hữu ích hơn vài câu dài mà lặp cấu trúc.",
+        "mình học được cả nhịp trò chuyện nhẹ nhàng lẫn cách chuyển chủ đề từ tập văn bản nhỏ này.",
+        "nếu bạn đang kể một điều đáng yêu thì câu trả lời cũng nên giữ độ mềm tương tự để không bị cứng.",
+        "nếu bạn đang hỏi điều gì đó thì mô hình thường nghiêng sang những từ mang tính tiếp lời hoặc suy đoán.",
+        "một chút ngẫu nhiên là phần khiến phản hồi trông sống hơn thay vì hoàn toàn đoán trước được.",
+        "nhưng ngẫu nhiên vẫn được kéo lại bởi chủ đề gần nên câu thường không trôi quá xa.",
+        "mình thích kiểu hội thoại mà mỗi câu đều có cảm giác được sinh ra ngay lúc đó.",
+        "mỗi lần phản hồi xong lịch sử lại dày thêm một chút và ảnh hưởng đến những lần sau.",
+        "nếu bạn nhắc lại cùng một chủ đề vài lần xác suất bám đúng chủ đề đó sẽ mạnh lên rõ rệt.",
+        "sự tự nhiên đến từ việc nhiều cặp từ đời thường được đặt gần nhau trong dữ liệu gốc.",
+        "có lúc câu trả lời sẽ ngắn gọn nhưng vẫn nghe hợp vì nó bám đúng mạch vừa rồi.",
+        "mình ưu tiên điều vừa xảy ra trong đoạn chat hơn là một câu mẫu đẹp nhưng xa ngữ cảnh.",
+        "nếu prompt rất mới lạ thì mô hình sẽ vay mượn những từ gần nhất trong lịch sử để giữ độ liên kết.",
+        "đôi khi một từ khóa mạnh đủ để kéo cả câu sang đúng hướng mà không cần câu lệnh dài.",
+        "bạn cứ xem nó như một mini ai biết nối câu theo xác suất ngay trên giao diện chat.",
+        "vì phản hồi là câu mới nên hai lần nhắn tương tự vẫn có thể nhận hai câu khác nhau khá rõ.",
+        "mình muốn mỗi câu sinh ra có cảm giác mềm hơn một template đóng hộp sẵn.",
+        "khi dữ liệu có nhiều ví dụ đời thường thì câu sinh ra thường nghe gần người dùng hơn.",
+        "những đoạn mô tả ngắn về cảm xúc thời tiết kế hoạch và thói quen giúp mô hình nhỏ thông minh hơn thấy rõ.",
+        "mỗi chủ đề đều góp một ít vốn từ riêng để lúc cần mô hình có thể nghiêng về hướng phù hợp.",
+        "nếu câu cuối của bạn mang tính cảm thán mình cũng dễ đáp lại theo cùng nhịp hơn.",
+        "khi prompt chứa vài từ rất cụ thể thì chúng trở thành neo ngữ cảnh cho cả lượt sinh đó.",
+        "một mô hình nhỏ nhưng biết dừng đúng lúc còn tự nhiên hơn một câu quá dài mà loãng.",
+        "mình vẫn chỉ là bộ sinh xác suất nhưng có thể tạo ra nhiều biến thể quanh cùng một ý trò chuyện.",
+        "hội thoại càng tự nhiên thì việc chọn token kế tiếp càng nghe hợp tai hơn khi đọc lại.",
+        "điểm quan trọng nhất là phản hồi phải thật sự được tạo mới sau khi bạn gửi tin nhắn.",
+        "và nếu bạn chen thêm một tin khác thì phản hồi cũ phải nhường đường cho luồng mới ngay lập tức."
+    ]
+}

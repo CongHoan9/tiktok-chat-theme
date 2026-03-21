@@ -11,6 +11,7 @@ const stickerBtn = document.getElementById("sticker-button");
 const enterBtn = document.getElementById("enter-button");
 
 const STORAGE_KEY = "tiktok-chat-theme-messages";
+const AI_CONFIG_PATH = "ai-model.json";
 const LONG_PRESS_DELAY = 380;
 const TIMESTAMP_GAP_MS = 60 * 60 * 1000;
 const PROFILE = {
@@ -60,6 +61,486 @@ let messages = [];
 let contextMenu = null;
 let longPressTimer = null;
 let longPressPointerId = null;
+let aiConfig = null;
+let aiReplyTimer = null;
+let isAiTyping = false;
+let aiGenerationRunId = 0;
+
+const FALLBACK_AI_CONFIG = {
+    profile: {
+        name: "Mini GPT Tĩnh",
+        description: "Bộ sinh phản hồi chạy trên trình duyệt.",
+        typingDelay: {
+            basePause: 260,
+            stepPause: 24,
+            jitter: 160,
+            minVisible: 700,
+            maxVisible: 2500
+        }
+    },
+    generation: {
+        minTokens: 10,
+        maxTokens: 34,
+        temperature: 0.88,
+        promptBias: 5,
+        historyBias: 2.1,
+        topicBias: 2.6,
+        pairBias: 1.9,
+        repetitionPenalty: 1.45,
+        endingBias: 2.9,
+        fallbackBias: 0.7,
+        stopChance: 0.17,
+        seedLength: 2
+    },
+    starters: ["ừ", "nghe", "đúng", "chuẩn", "haha", "mình", "thật ra", "kiểu"],
+    fillers: ["thật", "khá", "rất", "cũng", "vẫn", "luôn", "hơi", "nữa", "mà", "đó"],
+    endings: [".", "!", "?", "nhỉ", "nha", "đấy", "đó"],
+    topics: {
+        weather: {
+            keywords: ["trời", "nắng", "mưa", "gió", "mây", "thời tiết", "đẹp", "lạnh", "nóng"],
+            corpus: [
+                "trời đẹp kiểu này làm người ta muốn đi chậm lại để ngắm thêm một chút.",
+                "nếu có nắng nhẹ với gió mát thì tâm trạng thường sáng lên rất nhanh.",
+                "mưa nhỏ đôi khi lại khiến cuộc trò chuyện nghe mềm và gần hơn."
+            ]
+        },
+        mood: {
+            keywords: ["vui", "buồn", "mệt", "chán", "tâm trạng", "stress", "ổn"],
+            corpus: [
+                "một câu dịu thôi cũng đủ làm cảm xúc bớt nặng đi đôi chút.",
+                "niềm vui nhỏ thường lan rất nhanh trong một đoạn chat ngắn.",
+                "khi chủ đề chạm vào cảm xúc mình sẽ ưu tiên những từ mềm và gần hơn."
+            ]
+        }
+    },
+    corpus: [
+        "mình không lấy sẵn một câu trả lời cố định mà ghép token mới theo xác suất đi cùng nhau.",
+        "nếu bạn đổi chủ đề giữa chừng mình sẽ ưu tiên điều vừa nhắn hơn lịch sử cũ.",
+        "mỗi phản hồi đều được tạo mới ngay lúc bạn gửi tin nhắn trên static web này."
+    ]
+};
+
+function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => {
+        window.setTimeout(resolve, ms);
+    });
+}
+
+function randomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function tokenizeText(text) {
+    return (text.toLowerCase().match(/[\p{L}\p{N}']+|[.,!?;:]/gu) || []);
+}
+
+function normalizeToken(token) {
+    return token
+        .toLowerCase()
+        .replace(/(^[^\p{L}\p{N}']+)|([^\p{L}\p{N}']+$)/gu, "");
+}
+
+function uniqueTokens(tokens) {
+    return [...new Set(tokens
+        .map(normalizeToken)
+        .filter(token => /[\p{L}\p{N}]/u.test(token)))];
+}
+
+function isWordToken(token) {
+    return /[\p{L}\p{N}]/u.test(token);
+}
+
+function chooseWeighted(entries, temperature = 1) {
+    if (!entries.length) {
+        return null;
+    }
+
+    const adjusted = entries.map((entry) => {
+        const safeWeight = Math.max(entry.weight, 0.001);
+        return {
+            value: entry.value,
+            weight: Math.pow(safeWeight, 1 / Math.max(temperature, 0.15))
+        };
+    });
+    const total = adjusted.reduce((sum, entry) => sum + entry.weight, 0);
+    let threshold = Math.random() * total;
+
+    for (const entry of adjusted) {
+        threshold -= entry.weight;
+        if (threshold <= 0) {
+            return entry.value;
+        }
+    }
+
+    return adjusted[adjusted.length - 1].value;
+}
+
+function buildMarkovStats(sentences) {
+    const START = "__START__";
+    const END = "__END__";
+    const chain = new Map();
+    const globalCounts = new Map();
+    const pairCounts = new Map();
+    const vocabulary = new Set();
+
+    const addTransition = (key, nextToken) => {
+        if (!chain.has(key)) {
+            chain.set(key, new Map());
+        }
+        const bucket = chain.get(key);
+        bucket.set(nextToken, (bucket.get(nextToken) || 0) + 1);
+    };
+
+    sentences.forEach((sentence) => {
+        const tokens = tokenizeText(sentence);
+        if (!tokens.length) {
+            return;
+        }
+
+        const padded = [START, START, ...tokens, END];
+        tokens.forEach((token, index) => {
+            vocabulary.add(token);
+            globalCounts.set(token, (globalCounts.get(token) || 0) + 1);
+            if (index < tokens.length - 1) {
+                const pairKey = `${token}|${tokens[index + 1]}`;
+                pairCounts.set(pairKey, (pairCounts.get(pairKey) || 0) + 1);
+            }
+        });
+        for (let index = 2; index < padded.length; index += 1) {
+            const previousTwo = padded[index - 2];
+            const previousOne = padded[index - 1];
+            const nextToken = padded[index];
+            addTransition(`${previousTwo}|${previousOne}`, nextToken);
+            addTransition(`*|${previousOne}`, nextToken);
+            addTransition(previousOne, nextToken);
+        }
+    });
+    return { START, END, chain, globalCounts, pairCounts, vocabulary: [...vocabulary] };
+}
+
+class LocalChatAI {
+    constructor(config) {
+        this.setConfig(config);
+    }
+    setConfig(config) {
+        this.config = config || FALLBACK_AI_CONFIG;
+    }
+    get generationConfig() {
+        return this.config?.generation || FALLBACK_AI_CONFIG.generation;
+    }
+    get typingConfig() {
+        return this.config?.profile?.typingDelay || FALLBACK_AI_CONFIG.profile.typingDelay;
+    }
+    getRecentTextMessages(historyMessages, limit = 10) {
+        return historyMessages
+            .filter(message => message.type === "text")
+            .slice(-limit);
+    }
+    scoreTopics(contextTokens) {
+        return Object.entries(this.config?.topics || {}).map(([name, topic]) => {
+            const score = (topic?.keywords || []).reduce((sum, keyword) => {
+                const keywordTokens = uniqueTokens(tokenizeText(keyword));
+                return sum + keywordTokens.reduce((tokenSum, token) => tokenSum + (contextTokens.includes(token) ? 1 : 0), 0);
+            }, 0);
+
+            return { name, topic, score };
+        }).filter(topic => topic.score > 0).sort((left, right) => right.score - left.score).slice(0, 3);
+    }
+    buildContext(historyMessages, prompt) {
+        const recentMessages = this.getRecentTextMessages(historyMessages, 8);
+        const promptTokens = uniqueTokens(tokenizeText(prompt)).slice(-10);
+        const historyTokens = uniqueTokens(tokenizeText(recentMessages.map(message => message.text).join(" "))).slice(-20);
+        const contextTokens = [...new Set([...promptTokens, ...historyTokens])];
+        const topicMatches = this.scoreTopics(contextTokens);
+        const recentPairs = new Set();
+        const recentMergedTokens = tokenizeText(`${recentMessages.map(message => message.text).join(" ")} ${prompt}`)
+            .map(normalizeToken)
+            .filter(Boolean); 
+            for (let index = 0; index < recentMergedTokens.length - 1; index += 1) {
+                recentPairs.add(`${recentMergedTokens[index]}|${recentMergedTokens[index + 1]}`);
+            }
+            return {
+                recentMessages,
+                promptTokens,
+                historyTokens,
+                contextTokens,
+                topicMatches,
+                recentPairs
+            };
+    } 
+    buildWorkingCorpus(historyMessages, prompt) {
+        const context = this.buildContext(historyMessages, prompt);
+        const workingCorpus = [
+            ...(this.config?.corpus || []),
+            ...context.recentMessages.map(message => message.text),
+            ...context.recentMessages.slice(-6).map(message => message.text),
+            ...context.recentMessages.slice(-3).map(message => message.text)
+        ];
+        context.topicMatches.forEach(({ topic, score }) => {
+            for (let index = 0; index < score + 1; index += 1) {
+                workingCorpus.push(...(topic?.corpus || []));
+            }
+        });
+        return {
+            context,
+            stats: buildMarkovStats(workingCorpus)
+        };
+    }
+    getCandidates(stats, previousTwo, previousOne) {
+        return stats.chain.get(`${previousTwo}|${previousOne}`)
+            || stats.chain.get(`*|${previousOne}`)
+            || stats.chain.get(previousOne)
+            || null;
+    }
+    createSeedTokens(context) {
+        const generation = this.generationConfig;
+        const starterEntries = [];
+        context.promptTokens.slice(-3).forEach((token, index) => {
+            starterEntries.push({ value: token, weight: 3 - index * 0.45 });
+        });
+
+        (this.config?.starters || []).forEach((starter, index) => {
+            starterEntries.push({
+                value: starter,
+                weight: Math.max(0.8, 1.7 - index * 0.08)
+            });
+        });
+        context.topicMatches.forEach(({ topic, score }) => {
+            (topic?.keywords || []).forEach((keyword) => {
+                starterEntries.push({
+                    value: keyword,
+                    weight: 1.15 + score
+                });
+            });
+        });
+        const seed = chooseWeighted(starterEntries, 0.92) || "mình";
+        return tokenizeText(seed).slice(0, generation.seedLength).filter(Boolean);
+    } 
+    buildCandidateEntries(bundle, previousOne, transitions, usedCounts, step) {
+        const generation = this.generationConfig;
+        const { stats, context } = bundle;
+        const entries = [];
+        const topicKeywordTokens = context.topicMatches.flatMap(({ topic }) => uniqueTokens((topic?.keywords || []).flatMap(keyword => tokenizeText(keyword))));
+        if (transitions) {
+            transitions.forEach((count, token) => {
+                const normalized = normalizeToken(token);
+                const repeatedCount = usedCounts.get(normalized) || 0;
+                let weight = count; 
+                if (context.promptTokens.includes(normalized)) {
+                    weight += generation.promptBias;
+                } 
+                if (context.historyTokens.includes(normalized)) {
+                    weight += generation.historyBias;
+                } if (topicKeywordTokens.includes(normalized)) {
+                    weight += generation.topicBias;
+                }
+                if (stats.pairCounts.get(`${previousOne}|${token}`)) {
+                    weight += generation.pairBias;
+                }
+                if (context.recentPairs.has(`${normalizeToken(previousOne)}|${normalized}`)) {
+                    weight += generation.pairBias * 0.75;
+                }
+                if ((this.config?.endings || []).includes(token) && step >= generation.minTokens - 1) {
+                    weight += generation.endingBias;
+                } if (repeatedCount > 0 && isWordToken(token)) {
+                    weight /= 1 + repeatedCount * generation.repetitionPenalty;
+                }
+
+                entries.push({ value: token, weight });
+            });
+        }
+        context.promptTokens.forEach((token) => {
+            if (!entries.find(entry => entry.value === token)) {
+                entries.push({ value: token, weight: generation.fallbackBias + 0.5 });
+            }
+        }); 
+        context.historyTokens.forEach((token) => {
+            if (!entries.find(entry => entry.value === token)) {
+                entries.push({ value: token, weight: generation.fallbackBias });
+            }
+        });
+        (this.config?.fillers || []).forEach((token) => {
+            if (!entries.find(entry => entry.value === token)) {
+                entries.push({ value: token, weight: 0.34 });
+            }
+        });
+        if (!entries.length) {
+            stats.vocabulary.slice(0, 24).forEach((token) => {
+                entries.push({
+                    value: token,
+                    weight: stats.globalCounts.get(token) || 0.4
+                });
+            });
+        }
+        return entries;
+    }
+    cleanup(tokens) {
+        const cleaned = tokens
+            .join(" ")
+            .replace(/\s+([,.!?;:])/g, "$1")
+            .replace(/([,.!?;:])(\p{L})/gu, "$1 $2")
+            .replace(/\s{2,}/g, " ")
+            .trim(); 
+        if (!cleaned) {
+            return "";
+        }
+        const finalText = /[.!?]$/.test(cleaned) ? cleaned : `${cleaned}.`;
+        return finalText.charAt(0).toUpperCase() + finalText.slice(1);
+    } 
+    async generateReply(prompt, historyMessages, runId, getActiveRunId) {
+        const bundle = this.buildWorkingCorpus(historyMessages, prompt);
+        const generation = this.generationConfig;
+        const { START, END } = bundle.stats;
+        const output = [];
+        const usedCounts = new Map();
+        const maxTokens = randomInt(generation.minTokens, generation.maxTokens);
+        const seedTokens = this.createSeedTokens(bundle.context);
+        let previousTwo = START;
+        let previousOne = START;
+        seedTokens.forEach((token) => {
+            output.push(token);
+            if (isWordToken(token)) {
+                const normalized = normalizeToken(token);
+                usedCounts.set(normalized, (usedCounts.get(normalized) || 0) + 1);
+            }
+        });
+        if (output.length >= 2) {
+            previousTwo = output[output.length - 2];
+            previousOne = output[output.length - 1];
+        } 
+        else if (output.length === 1) {
+            previousOne = output[0];
+        } 
+        for (let step = output.length; step < maxTokens; step += 1) {
+            if (runId !== getActiveRunId()) {
+                return null;
+            } 
+            const transitions = this.getCandidates(bundle.stats, previousTwo, previousOne);
+            const entries = this.buildCandidateEntries(bundle, previousOne, transitions, usedCounts, step);
+            const nextToken = chooseWeighted(entries, generation.temperature); if (!nextToken) {
+                continue;
+            }
+            if (nextToken === END) {
+                if (step >= generation.minTokens - 1) {
+                    break;
+                }
+                continue;
+            }
+            output.push(nextToken);
+            if (isWordToken(nextToken)) {
+                const normalized = normalizeToken(nextToken);
+                usedCounts.set(normalized, (usedCounts.get(normalized) || 0) + 1);
+            }
+            if ((this.config?.endings || []).includes(nextToken) && step >= generation.minTokens - 1 && Math.random() < generation.stopChance) {
+                break;
+            }
+            previousTwo = previousOne;
+            previousOne = nextToken;
+            await sleep(randomInt(8, 20));
+        }
+        const reply = this.cleanup(output);
+        if (reply.length >= 6) {
+            return reply;
+        }
+        return "Mình vừa nối lại luồng chat theo tin nhắn mới của bạn nên câu này vẫn đang bám vào đúng chủ đề đó.";
+    }
+}
+
+const localChatAI = new LocalChatAI(FALLBACK_AI_CONFIG);
+
+function createTypingRow() {
+    const wrapper = document.createElement("div");
+    wrapper.className = "message-row other group-single";
+    wrapper.id = "ai-typing-row";
+
+    const shell = document.createElement("div");
+    shell.className = "message-bubble-shell";
+    const bubble = document.createElement("div"); 
+    bubble.className = "message-bubble typing-row";
+    for (let index = 0; index < 3; index += 1) {
+        const dot = document.createElement("span");
+        dot.className = "typing-dot";
+        dot.style.setProperty("--dot-index", String(index));
+        bubble.appendChild(dot);
+    }
+    shell.appendChild(bubble);
+    wrapper.appendChild(shell);
+    return wrapper;
+}
+
+function renderTypingIndicator() {
+    const existing = document.getElementById("ai-typing-row");
+    if (existing) {
+        existing.remove();
+    }
+    if (!isAiTyping) {
+        return;
+    }
+
+    const readReceipt = messageList.querySelector(".read-receipt-row");
+    const typingRow = createTypingRow();
+    if (readReceipt) {
+        readReceipt.before(typingRow);
+    } else {
+        messageList.appendChild(typingRow);
+    }
+}
+
+async function loadAiConfig() {
+    try {
+        const response = await fetch(AI_CONFIG_PATH, { cache: "no-store" });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        aiConfig = await response.json();
+    } catch (error) {
+        aiConfig = FALLBACK_AI_CONFIG;
+    }
+    localChatAI.setConfig(aiConfig);
+}
+
+async function scheduleAiReply(prompt) {
+    const runId = ++aiGenerationRunId;
+    const typingConfig = localChatAI.typingConfig;
+    const startedAt = performance.now();
+    isAiTyping = true;
+    renderMessages({ attachReadReceiptToLatest: true });
+    scrollMessagesToBottom(true);
+    await sleep(typingConfig.basePause + randomInt(0, typingConfig.jitter));
+    const reply = await localChatAI.generateReply(prompt, messages, runId, () => aiGenerationRunId);
+    if (runId !== aiGenerationRunId || !reply) {
+        return;
+    }
+    const elapsed = performance.now() - startedAt;
+    const minimumVisible = Math.min(
+        typingConfig.maxVisible,
+        typingConfig.minVisible + tokenizeText(reply).length * typingConfig.stepPause
+    );
+    if (elapsed < minimumVisible) {
+        await sleep(minimumVisible - elapsed);
+    }
+    if (runId !== aiGenerationRunId) {
+        return;
+    }
+    isAiTyping = false;
+    messages.push(createTextMessage(reply, "other"));
+    persistMessages();
+    appendLatestMessage();
+}
+
+function resetConversation() {
+    aiGenerationRunId += 1;
+    isAiTyping = false;
+    messages = DEFAULT_MESSAGES.map(normalizeMessage).filter(Boolean);
+    persistMessages();
+    renderMessages();
+    updateComposerState();
+    scrollMessagesToBottom(true);
+}
 
 function clamp(value, min, max) {
     return Math.min(Math.max(value, min), max);
@@ -209,11 +690,9 @@ function createChatIntroBlock() {
 function createAcceptedNotice() {
     const row = document.createElement("div");
     row.className = "system-row";
-
     const text = document.createElement("p");
     text.className = "system-note";
     text.textContent = "Yêu cầu trò chuyện đã được chấp nhận. Bạn có thể bắt đầu trò chuyện.";
-
     row.appendChild(text);
     return row;
 }
@@ -270,7 +749,6 @@ function closeContextMenu() {
     if (!contextMenu) {
         return;
     }
-
     contextMenu.overlay.remove();
     contextMenu.backdrop.remove();
     window.removeEventListener("resize", contextMenu.handleViewportChange);
@@ -428,10 +906,12 @@ function renderMessages({ attachReadReceiptToLatest = false } = {}) {
         messageList.appendChild(createMessageRow(message, layout, { index }));
     });
 
+
     const readReceipt = createReadReceiptRow(attachReadReceiptToLatest);
     if (readReceipt) {
         messageList.appendChild(readReceipt);
     }
+    renderTypingIndicator();
 }
 
 function createTextMessage(text, sender = "me") {
@@ -527,6 +1007,7 @@ function handleSendMessage() {
     messages.push(createTextMessage(text, "me"));
     persistMessages();
     appendLatestMessage();
+    scheduleAiReply(text);
 
     inputBox.value = "";
     updateComposerState();
@@ -602,7 +1083,6 @@ function deleteMessage(index) {
     persistMessages();
     closeContextMenu();
     renderMessages();
-    scrollMessagesToBottom(true);
 }
 
 function setMessageReaction(index, emoji) {
@@ -650,7 +1130,6 @@ function positionContextPanel(row, panel, sender) {
     const desiredTop = Math.max(verticalPadding, rowRect.top - 59);
     const maxLeft = Math.max(horizontalPadding, viewportWidth - panelRect.width - horizontalPadding);
     const maxTop = Math.max(verticalPadding, viewportHeight - panelRect.height - verticalPadding);
-
     panel.style.left = `${clamp(desiredLeft, horizontalPadding, maxLeft)}px`;
     panel.style.top = `${clamp(desiredTop, verticalPadding, maxTop)}px`;
 }
