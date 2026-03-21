@@ -21,6 +21,7 @@ const PROFILE = {
     button: "Follow lại",
     avatar: "image/avata.jpg"
 };
+const OTHER_AVATAR = "image/avata.jpg";
 const REACTIONS = {
     love: {
         label: "Love",
@@ -47,6 +48,49 @@ const CONTEXT_ACTIONS = [
     { label: "Dịch", icon: "文A", disabled: true },
     { label: "Xóa ở phía tôi", icon: "🗑", danger: true, action: "delete" }
 ];
+const CONTEXT_ICON_PATHS = {
+    reply: {
+        viewBox: "0 0 24 24",
+        paths: [
+            "M10.8 6.2 5 12l5.8 5.8",
+            "M6.2 12H15c2.9 0 4.8 1.6 4.8 5.4"
+        ]
+    },
+    forward: {
+        viewBox: "0 0 24 24",
+        paths: [
+            "M13.2 6.2 19 12l-5.8 5.8",
+            "M17.8 12H9c-2.9 0-4.8 1.6-4.8 5.4"
+        ]
+    },
+    copy: {
+        viewBox: "0 0 24 24",
+        paths: [
+            "M9 9.2h8.8A1.2 1.2 0 0 1 19 10.4v8.4a1.2 1.2 0 0 1-1.2 1.2H9a1.2 1.2 0 0 1-1.2-1.2v-8.4A1.2 1.2 0 0 1 9 9.2Z",
+            "M5.2 14.8H4.8A1.8 1.8 0 0 1 3 13V4.8A1.8 1.8 0 0 1 4.8 3h8.2A1.8 1.8 0 0 1 14.8 4.8v.4"
+        ]
+    },
+    translate: {
+        viewBox: "0 0 24 24",
+        paths: [
+            "M4 6.2h8.4",
+            "M8.2 6.2v1.2c0 3.2-1.5 5.9-4 7.6",
+            "M6 10.4c1 1.4 2.6 2.7 4.8 3.8",
+            "M14.5 18.8 18 9.4l3.5 9.4",
+            "M15.6 15.8h4.8"
+        ]
+    },
+    delete: {
+        viewBox: "0 0 24 24",
+        paths: [
+            "M5.2 7h13.6",
+            "M9.2 3.8h5.6",
+            "M7.4 7l.7 11a1.5 1.5 0 0 0 1.5 1.4h4.8a1.5 1.5 0 0 0 1.5-1.4l.7-11",
+            "M10 10.2v5.8",
+            "M14 10.2v5.8"
+        ]
+    }
+};
 const DEFAULT_MESSAGES = [
     
 ];
@@ -132,6 +176,13 @@ function sleep(ms) {
 
 function randomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function pickRandom(list) {
+    if (!Array.isArray(list) || !list.length) {
+        return "";
+    }
+    return list[randomInt(0, list.length - 1)];
 }
 
 function tokenizeText(text) {
@@ -320,6 +371,191 @@ class LocalChatAI {
         const seed = chooseWeighted(starterEntries, 0.92) || "mình";
         return tokenizeText(seed).slice(0, generation.seedLength).filter(Boolean);
     } 
+    normalizeSentence(text) {
+        return text
+            .replace(/\s+/g, " ")
+            .replace(/\s+([,.!?;:])/g, "$1")
+            .trim()
+            .replace(/[.!?]+$/g, "");
+    }
+    finalizeReply(text) {
+        const cleaned = this.normalizeSentence(text);
+        if (!cleaned) {
+            return "";
+        }
+        const normalized = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+        return /[.!?]$/.test(normalized) ? normalized : `${normalized}.`;
+    }
+    detectSignals(prompt, context) {
+        const normalizedPrompt = prompt.toLowerCase();
+        const hasAny = (keywords) => keywords.some((keyword) => normalizedPrompt.includes(keyword));
+
+        return {
+            isQuestion: prompt.includes("?") || hasAny(["sao", "tại sao", "vì sao", "gì", "được không", "không vậy", "hả", "à", "ư"]),
+            wantsOpinion: hasAny(["nghĩ sao", "thấy sao", "ổn không", "hay không", "nên không"]),
+            wantsPlan: hasAny(["nên", "kế hoạch", "mai", "tối nay", "sắp tới", "chuẩn bị", "bắt đầu", "làm gì"]),
+            negativeMood: hasAny(["buồn", "mệt", "chán", "stress", "khó chịu", "cô đơn", "mất ngủ"]),
+            positiveMood: hasAny(["vui", "ổn", "happy", "thích", "đáng yêu", "xinh", "đẹp"]),
+            shortPrompt: (context.promptTokens || []).length <= 5,
+            topicName: context.topicMatches[0]?.name || ""
+        };
+    }
+    buildLead(signals) {
+        if (signals.negativeMood) {
+            return pickRandom(["Nghe vậy là mình thấy mood đang hơi nặng đó", "Đọc tới đây là mình thấy bạn đang hơi mệt thật", "Khúc này nghe có vẻ không nhẹ đầu lắm"]);
+        }
+        if (signals.wantsPlan) {
+            return pickRandom(["Nếu đi theo hướng dễ làm trước thì ổn hơn", "Mình nghiêng về kiểu chốt một bước gần nhất trước", "Đoạn này mà tách nhỏ ra thì dễ thở hơn nhiều"]);
+        }
+        if (signals.isQuestion || signals.wantsOpinion) {
+            return pickRandom(["Mình nghĩ là có đó", "Theo nhịp câu bạn vừa nhắn thì mình nghiêng về là có", "Nếu bám đúng đoạn chat này thì mình thấy khá ổn"]);
+        }
+        if (signals.positiveMood) {
+            return pickRandom(["Nghe câu này là mood sáng lên liền", "Khúc này đáng yêu theo kiểu rất tự nhiên", "Câu vừa rồi có năng lượng dễ thương ghê"]);
+        }
+        return pickRandom(["Mình đang bám sát đúng ý bạn vừa nhắn", "Câu này nối vào đoạn trước khá mượt đó", "Nhịp chat hiện tại đang đi đúng hướng rồi"]);
+    }
+    buildTopicClause(signals, context) {
+        const lastToken = context.promptTokens.slice(-1)[0] || "";
+        const tokenHint = lastToken ? `, nhất là chỗ ${lastToken}` : "";
+
+        switch (signals.topicName) {
+            case "weather":
+                return pickRandom([
+                    `Nhắc tới thời tiết là câu chuyện tự nhiên mềm hơn${tokenHint}`,
+                    "Nếu trời đang đẹp hoặc mát thì chỉ cần đáp lại dịu một chút là đã ra đúng vibe",
+                    "Chủ đề này hợp kiểu trả lời ngắn nhưng có hình ảnh một chút thì nghe đời hơn"
+                ]);
+            case "mood":
+                return pickRandom([
+                    "Khi chạm vào cảm xúc thì câu trả lời nên ấm và đừng cố tỏ ra quá thông thái",
+                    "Đoạn này hợp kiểu tiếp lời nhẹ để người đối diện thấy được lắng nghe",
+                    "Nếu đang mệt thật thì một câu dịu và gọn thường có lực hơn cả đoạn dài"
+                ]);
+            case "plan":
+                return pickRandom([
+                    "Mình sẽ ưu tiên chốt bước gần nhất trước thay vì ôm hết cả kế hoạch",
+                    "Kiểu tình huống này mà có một bước mở đầu rõ ràng là đỡ rối hẳn",
+                    "Nếu cần quyết nhanh thì cứ chọn phương án dễ bắt đầu nhất trước"
+                ]);
+            case "music":
+                return pickRandom([
+                    "Nhắc tới nhạc là mình nghiêng về cách nói theo mood hơn là phân tích khô",
+                    "Chủ đề này hợp kiểu mô tả cảm giác nghe hơn là cố chốt đúng sai",
+                    "Nếu bài đó hợp mood thì chỉ cần nói đúng cái cảm giác nó kéo ra là đủ"
+                ]);
+            case "food":
+                return pickRandom([
+                    "Nói về đồ ăn thì mấy câu gần gũi và có mùi vị một chút sẽ nghe thật hơn",
+                    "Chủ đề này chỉ cần gợi cảm giác thèm nhẹ thôi là câu đã sống rồi",
+                    "Đồ ăn với đồ uống hợp kiểu rủ rê mềm mềm hơn là nói quá nghiêm túc"
+                ]);
+            case "sleep":
+                return pickRandom([
+                    "Mấy đoạn nói về giấc ngủ nên đi nhịp chậm và mềm thì tự nhiên hơn",
+                    "Nếu đang khuya thì câu trả lời chỉ cần nhẹ và êm là đủ đúng mood",
+                    "Chủ đề này hợp kiểu nói nhỏ và gần hơn là cố kéo năng lượng lên cao"
+                ]);
+            default:
+                return pickRandom([
+                    "Mình đang cố giữ câu trả lời nghe như tiếp lời thật chứ không đọc như mẫu có sẵn",
+                    "Ý chính là câu phải bám ngay đoạn chat vừa rồi để không bị trôi khỏi ngữ cảnh",
+                    "Mình muốn câu này vừa tự nhiên vừa còn giữ được chủ đề bạn vừa ném vào"
+                ]);
+        }
+    }
+    buildFollowUp(signals) {
+        if (signals.wantsPlan) {
+            return pickRandom([
+                "Nếu thích thì mình có thể cùng chốt bước đầu tiên luôn",
+                "Muốn thì mình thử bẻ nó thành một việc nhỏ nhất ngay bây giờ",
+                "Bạn muốn đi kiểu an toàn trước hay chọn cái nghe vui hơn"
+            ]);
+        }
+        if (signals.negativeMood) {
+            return pickRandom([
+                "Nếu muốn kể thêm một nhịp nữa thì mình vẫn đang nghe đây",
+                "Bạn muốn mình đáp nhẹ thôi hay nói thẳng hơn một chút",
+                "Nếu cần mình có thể đi cùng theo kiểu chậm và dịu hơn"
+            ]);
+        }
+        if (signals.isQuestion || signals.shortPrompt) {
+            return pickRandom([
+                "Bạn đang nghiêng về hướng nào hơn",
+                "Hay là bạn muốn mình nói thật lòng hơn nữa",
+                "Bạn muốn mình tiếp theo kiểu đùa nhẹ hay nghiêm túc hơn"
+            ]);
+        }
+        return pickRandom([
+            "Nói tiếp chút nữa là câu chuyện này còn ra thêm được",
+            "Mình thấy đoạn này còn khai thác thêm vui đó",
+            "Giữ nhịp này nói tiếp là khá cuốn"
+        ]);
+    }
+    buildNaturalLead(signals) {
+        if (signals.negativeMood) {
+            return pickRandom(["Nghe hơi mệt thật", "Ừ, đoạn này nặng mood ghê", "Đọc là thấy không nhẹ rồi"]);
+        }
+        if (signals.wantsPlan) {
+            return pickRandom(["Mình thấy chốt cái gần nhất trước là ổn", "Kiểu này cứ làm gọn từng bước thôi", "Chắc đi từ cái dễ nhất trước"]);
+        }
+        if (signals.isQuestion || signals.wantsOpinion) {
+            return pickRandom(["Mình thấy cũng ổn đó", "Theo mình thì có lý", "Mình nghiêng về hướng đó hơn"]);
+        }
+        if (signals.positiveMood) {
+            return pickRandom(["Nghe dễ thương ghê", "Khúc này sáng mood thật", "Câu này có vibe ổn đó"]);
+        }
+        return pickRandom(["Ừ, câu này mượt", "Mình bắt được ý bạn rồi", "Đúng nhịp chat luôn"]);
+    }
+    buildNaturalTexture(signals) {
+        switch (signals.topicName) {
+            case "weather":
+                return pickRandom(["Nhắc tới trời là câu chuyện dịu hẳn", "Kiểu chủ đề này chỉ cần mềm một chút là ra vibe"]);
+            case "mood":
+                return pickRandom(["Mấy đoạn chạm cảm xúc thì đáp nhẹ lại nghe thật hơn", "Kiểu này cứ dịu thôi là hợp"]);
+            case "plan":
+                return pickRandom(["Có một bước đầu rõ là đỡ rối ngay", "Chỉ cần chốt việc tiếp theo thôi là đủ"]);
+            case "music":
+                return pickRandom(["Nhạc thì nói theo cảm giác nghe sẽ tự nhiên hơn", "Chủ đề này hợp kể mood hơn là phân tích"]);
+            case "food":
+                return pickRandom(["Nghe kiểu này là muốn rủ đi ăn luôn", "Đồ ăn mà nói gần gũi chút là cuốn ngay"]);
+            case "sleep":
+                return pickRandom(["Đoạn này mà nói êm một chút là hợp", "Chủ đề này càng nhẹ giọng càng đúng mood"]);
+            default:
+                return pickRandom(["Miễn là còn bám đúng câu bạn vừa nói", "Quan trọng là đừng để nó bị cứng", "Cứ để nó tự nhiên như đang chat thật"]);
+        }
+    }
+    buildNaturalFollow(signals) {
+        if (signals.negativeMood) {
+            return pickRandom(["Muốn kể thêm thì mình nghe nè", "Nếu cần mình đáp dịu hơn cũng được"]);
+        }
+        if (signals.wantsPlan) {
+            return pickRandom(["Muốn thì mình chốt thử bước đầu luôn", "Cần thì mình bẻ nhỏ nó ra cho"]);
+        }
+        if (signals.isQuestion && Math.random() < 0.45) {
+            return pickRandom(["Bạn đang nghiêng về hướng nào hơn", "Hay là bạn muốn mình nói thẳng hơn chút nữa"]);
+        }
+        return "";
+    }
+    composeGuidedReply(prompt, context) {
+        const signals = this.detectSignals(prompt, context);
+        const lead = this.normalizeSentence(this.buildNaturalLead(signals));
+        const topic = this.normalizeSentence(this.buildNaturalTexture(signals));
+        const follow = this.normalizeSentence(this.buildNaturalFollow(signals));
+        const firstLine = topic && Math.random() < 0.5
+            ? `${lead}, ${topic.toLowerCase()}`
+            : lead;
+        const parts = [firstLine];
+
+        if (topic && firstLine === lead && Math.random() < 0.25) {
+            parts.push(topic);
+        }
+        if (follow) {
+            parts.push(follow);
+        }
+
+        return this.finalizeReply(parts.filter(Boolean).join(". "));
+    }
     buildCandidateEntries(bundle, previousOne, transitions, usedCounts, step) {
         const generation = this.generationConfig;
         const { stats, context } = bundle;
@@ -391,8 +627,7 @@ class LocalChatAI {
         const finalText = /[.!?]$/.test(cleaned) ? cleaned : `${cleaned}.`;
         return finalText.charAt(0).toUpperCase() + finalText.slice(1);
     } 
-    async generateReply(prompt, historyMessages, runId, getActiveRunId) {
-        const bundle = this.buildWorkingCorpus(historyMessages, prompt);
+    async generateMarkovReply(bundle, runId, getActiveRunId) {
         const generation = this.generationConfig;
         const { START, END } = bundle.stats;
         const output = [];
@@ -411,17 +646,18 @@ class LocalChatAI {
         if (output.length >= 2) {
             previousTwo = output[output.length - 2];
             previousOne = output[output.length - 1];
-        } 
+        }
         else if (output.length === 1) {
             previousOne = output[0];
-        } 
+        }
         for (let step = output.length; step < maxTokens; step += 1) {
             if (runId !== getActiveRunId()) {
                 return null;
-            } 
+            }
             const transitions = this.getCandidates(bundle.stats, previousTwo, previousOne);
             const entries = this.buildCandidateEntries(bundle, previousOne, transitions, usedCounts, step);
-            const nextToken = chooseWeighted(entries, generation.temperature); if (!nextToken) {
+            const nextToken = chooseWeighted(entries, generation.temperature);
+            if (!nextToken) {
                 continue;
             }
             if (nextToken === END) {
@@ -442,7 +678,30 @@ class LocalChatAI {
             previousOne = nextToken;
             await sleep(randomInt(8, 20));
         }
-        const reply = this.cleanup(output);
+        return this.cleanup(output);
+    }
+    mergeReplies(guidedReply, markovReply) {
+        if (guidedReply && markovReply) {
+            const guidedBase = this.normalizeSentence(guidedReply);
+            const markovBase = this.normalizeSentence(markovReply);
+            if (markovBase && !guidedBase.toLowerCase().includes(markovBase.toLowerCase()) && Math.random() < 0.28) {
+                const shortMarkov = markovBase.split(/[.!?]/)[0].trim();
+                if (shortMarkov && shortMarkov.split(/\s+/).length <= 10) {
+                    return this.finalizeReply(`${guidedBase}. ${shortMarkov}`);
+                }
+            }
+            return this.finalizeReply(guidedBase);
+        }
+        return guidedReply || markovReply || "";
+    }
+    async generateReply(prompt, historyMessages, runId, getActiveRunId) {
+        const bundle = this.buildWorkingCorpus(historyMessages, prompt);
+        const guidedReply = this.composeGuidedReply(prompt, bundle.context);
+        const markovReply = await this.generateMarkovReply(bundle, runId, getActiveRunId);
+        if (markovReply === null) {
+            return null;
+        }
+        const reply = this.mergeReplies(guidedReply, markovReply);
         if (reply.length >= 6) {
             return reply;
         }
@@ -454,21 +713,25 @@ const localChatAI = new LocalChatAI(FALLBACK_AI_CONFIG);
 
 function createTypingRow() {
     const wrapper = document.createElement("div");
-    wrapper.className = "message-row other group-single";
+    wrapper.className = "message-row other group-single typing-indicator-row";
     wrapper.id = "ai-typing-row";
 
+    const avatar = createOtherAvatar("group-single");
     const shell = document.createElement("div");
     shell.className = "message-bubble-shell";
-    const bubble = document.createElement("div"); 
+    const bubble = document.createElement("div");
     bubble.className = "message-bubble typing-row";
+    const dots = document.createElement("div");
+    dots.className = "typing-dots";
     for (let index = 0; index < 3; index += 1) {
         const dot = document.createElement("span");
         dot.className = "typing-dot";
         dot.style.setProperty("--dot-index", String(index));
-        bubble.appendChild(dot);
+        dots.appendChild(dot);
     }
+    bubble.appendChild(dots);
     shell.appendChild(bubble);
-    wrapper.appendChild(shell);
+    wrapper.append(avatar, shell);
     return wrapper;
 }
 
@@ -481,13 +744,56 @@ function renderTypingIndicator() {
         return;
     }
 
-    const readReceipt = messageList.querySelector(".read-receipt-row");
     const typingRow = createTypingRow();
-    if (readReceipt) {
-        readReceipt.before(typingRow);
-    } else {
-        messageList.appendChild(typingRow);
+    messageList.appendChild(typingRow);
+}
+
+function pickRandomReaction() {
+    const keys = Object.keys(REACTIONS);
+    return keys[randomInt(0, keys.length - 1)];
+}
+
+async function scheduleAiReactionReply(reaction) {
+    const runId = ++aiGenerationRunId;
+    const typingConfig = localChatAI.typingConfig;
+    const startedAt = performance.now();
+    isAiTyping = true;
+    renderMessages({ attachReadReceiptToLatest: true });
+    scrollMessagesToBottom(true);
+    await sleep(typingConfig.basePause + randomInt(0, typingConfig.jitter));
+    if (runId !== aiGenerationRunId) {
+        return;
     }
+
+    let nextMessage = null;
+    if (Math.random() < 0.48) {
+        nextMessage = createReactionMessage(pickRandomReaction(), "other");
+    } else {
+        const reply = await localChatAI.generateReply(`reaction ${reaction}`, messages, runId, () => aiGenerationRunId);
+        if (runId !== aiGenerationRunId || !reply) {
+            return;
+        }
+        nextMessage = createTextMessage(reply, "other");
+    }
+
+    const textLoad = nextMessage.type === "text"
+        ? tokenizeText(nextMessage.text).length
+        : 6;
+    const elapsed = performance.now() - startedAt;
+    const minimumVisible = Math.min(
+        typingConfig.maxVisible,
+        typingConfig.minVisible + textLoad * typingConfig.stepPause
+    );
+    if (elapsed < minimumVisible) {
+        await sleep(minimumVisible - elapsed);
+    }
+    if (runId !== aiGenerationRunId) {
+        return;
+    }
+    isAiTyping = false;
+    messages.push(nextMessage);
+    persistMessages();
+    appendLatestMessage();
 }
 
 async function loadAiConfig() {
@@ -570,7 +876,11 @@ function normalizeMessage(rawMessage, index) {
         return null;
     }
 
-    const type = ["reaction", "sticker"].includes(rawMessage.type) ? "reaction" : "text";
+    const type = ["reaction", "sticker"].includes(rawMessage.type)
+        ? "reaction"
+        : rawMessage.type === "image"
+            ? "image"
+            : "text";
     const sender = rawMessage.sender === "other" ? "other" : "me";
     const createdAt = Number(rawMessage.createdAt) || Date.now() + index;
 
@@ -584,6 +894,22 @@ function normalizeMessage(rawMessage, index) {
             sender,
             type,
             reaction,
+            createdAt,
+            reactionEmoji: typeof rawMessage.reactionEmoji === "string" ? rawMessage.reactionEmoji : ""
+        };
+    }
+
+    if (type === "image") {
+        const imageSrc = typeof rawMessage.imageSrc === "string" ? rawMessage.imageSrc : "";
+        if (!imageSrc) {
+            return null;
+        }
+        return {
+            id: rawMessage.id || createdAt + index,
+            sender,
+            type,
+            imageSrc,
+            imageAlt: typeof rawMessage.imageAlt === "string" ? rawMessage.imageAlt : "",
             createdAt,
             reactionEmoji: typeof rawMessage.reactionEmoji === "string" ? rawMessage.reactionEmoji : ""
         };
@@ -708,12 +1034,56 @@ function createReactionBadge(message) {
     return badge;
 }
 
+function createOtherAvatar(layout) {
+    const slot = document.createElement("div");
+    slot.className = "message-avatar-slot";
+    if (layout === "group-bottom" || layout === "group-single") {
+        const avatar = document.createElement("img");
+        avatar.className = "message-avatar";
+        avatar.src = OTHER_AVATAR;
+        avatar.alt = PROFILE.name;
+        slot.appendChild(avatar);
+    }
+    return slot;
+}
+
+function createContextAvatar() {
+    const avatar = document.createElement("img");
+    avatar.className = "context-panel-avatar";
+    avatar.src = OTHER_AVATAR;
+    avatar.alt = PROFILE.name;
+    return avatar;
+}
+
 function createTextBubble(message, position, sender) {
     const shell = document.createElement("div");
     shell.className = "message-bubble-shell";
     const bubble = document.createElement("div");
     bubble.className = "message-bubble";
     bubble.textContent = message.text;
+    shell.appendChild(bubble);
+    if (position === "group-bottom" || position === "group-single") {
+        const tail = document.createElement("span");
+        tail.className = `message-tail ${sender}`;
+        shell.appendChild(tail);
+    }
+    const badge = createReactionBadge(message);
+    if (badge) {
+        shell.appendChild(badge);
+    }
+    return shell;
+}
+
+function createImageBubble(message, position, sender) {
+    const shell = document.createElement("div");
+    shell.className = "message-bubble-shell image-shell";
+    const bubble = document.createElement("div");
+    bubble.className = "message-bubble image-bubble";
+    const media = document.createElement("img");
+    media.className = "message-image-media";
+    media.src = message.imageSrc;
+    media.alt = message.imageAlt || "Image";
+    bubble.appendChild(media);
     shell.appendChild(bubble);
     if (position === "group-bottom" || position === "group-single") {
         const tail = document.createElement("span");
@@ -745,15 +1115,55 @@ function createReactionBubble(message) {
     return shell;
 }
 
+function createStickerReplyChip() {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "sticker-reply-chip";
+    const icon = document.createElement("span");
+    icon.className = "sticker-reply-icon";
+    icon.appendChild(createContextIcon("reply"));
+    const label = document.createElement("span");
+    label.className = "sticker-reply-label";
+    label.textContent = "Trả lời";
+    chip.append(icon, label);
+    return chip;
+}
+
+function createContextPreviewRow(message, layout) {
+    const row = document.createElement("article");
+    row.className = `message-row ${message.sender} ${layout} message-context-preview-row preview-bare`;
+
+    if (message.reactionEmoji) {
+        row.classList.add("has-reaction-badge");
+    }
+
+    let bubbleNode = null;
+    if (message.type === "reaction") {
+        row.classList.add("reaction-row");
+        bubbleNode = createReactionBubble(message);
+    } else if (message.type === "image") {
+        bubbleNode = createImageBubble(message, layout, message.sender);
+    } else {
+        bubbleNode = createTextBubble(message, layout, message.sender);
+    }
+
+    row.appendChild(bubbleNode);
+    return row;
+}
+
 function closeContextMenu() {
     if (!contextMenu) {
         return;
     }
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+    longPressPointerId = null;
     contextMenu.overlay.remove();
     contextMenu.backdrop.remove();
     window.removeEventListener("resize", contextMenu.handleViewportChange);
     window.visualViewport?.removeEventListener("resize", contextMenu.handleViewportChange);
     window.visualViewport?.removeEventListener("scroll", contextMenu.handleViewportChange);
+    window.removeEventListener("keydown", contextMenu.handleEscape);
     contextMenu = null;
 }
 
@@ -770,6 +1180,7 @@ function addMessageGestureHandlers(row) {
     const start = (event) => {
         if (contextMenu) {
             closeContextMenu();
+            return;
         }
 
         const pointerId = event.pointerId ?? "mouse";
@@ -804,8 +1215,12 @@ function createMessageRow(message, layout, options = {}) {
 
     const row = document.createElement("article");
     row.className = `message-row ${message.sender} ${layout}`;
+    row.classList.add(`type-${message.type}`);
     if (preview) {
         row.classList.add("message-context-preview-row");
+        if (message.sender === "other") {
+            row.classList.add("no-avatar-lane");
+        }
     }
     if (interactive && index !== undefined) {
         row.dataset.messageIndex = String(index);
@@ -815,27 +1230,59 @@ function createMessageRow(message, layout, options = {}) {
         row.classList.add("has-reaction-badge");
     }
 
+    let bubbleNode = null;
     if (message.type === "reaction") {
         row.classList.add("reaction-row");
-        row.appendChild(createReactionBubble(message));
+        bubbleNode = createReactionBubble(message);
+    } else if (message.type === "image") {
+        bubbleNode = createImageBubble(message, layout, message.sender);
+    } else {
+        bubbleNode = createTextBubble(message, layout, message.sender);
+    }
+
+    if (message.sender === "other") {
+        if (message.type !== "reaction") {
+            if (!preview) {
+                row.append(createOtherAvatar(layout), bubbleNode);
+            } else {
+                row.appendChild(bubbleNode);
+            }
+            return row;
+        }
+
+        const content = document.createElement("div");
+        content.className = "message-content-cluster other";
+        content.classList.add(`type-${message.type}`);
+        content.appendChild(bubbleNode);
+        if (!preview) {
+            content.appendChild(createStickerReplyChip());
+        }
+        if (!preview) {
+            row.append(createOtherAvatar(layout), content);
+        } else {
+            row.appendChild(content);
+        }
         return row;
     }
-    row.appendChild(createTextBubble(message, layout, message.sender));
+
+    row.appendChild(bubbleNode);
     return row;
 }
 
-function createReadReceiptRow(attachToLatest = false) {
-    const lastMineIndex = [...messages].map((message, index) => ({ message, index }))
+function getLastMineMessageIndex() {
+    return [...messages].map((message, index) => ({ message, index }))
         .filter(({ message }) => message.sender === "me")
-        .pop();
+        .pop()?.index ?? -1;
+}
 
-    if (!lastMineIndex) {
+function createReadReceiptRow(messageIndex, attachToLatest = false) {
+    if (messageIndex < 0) {
         return null;
     }
 
     const row = document.createElement("div");
     row.className = `read-receipt-row${attachToLatest ? " attached" : ""}`;
-    row.dataset.forMessageIndex = String(lastMineIndex.index);
+    row.dataset.forMessageIndex = String(messageIndex);
 
     const label = document.createElement("span");
     label.className = "read-receipt-label";
@@ -894,6 +1341,7 @@ function renderMessages({ attachReadReceiptToLatest = false } = {}) {
         messageList.appendChild(createTimestampRow(firstMessage.createdAt));
     }
     messageList.appendChild(createAcceptedNotice());
+    const lastMineIndex = getLastMineMessageIndex();
 
     messages.forEach((message, index) => {
         if (index > 0 && shouldRenderTimestamp(index)) {
@@ -903,14 +1351,19 @@ function renderMessages({ attachReadReceiptToLatest = false } = {}) {
             previous: messages[index - 1],
             next: messages[index + 1]
         });
-        messageList.appendChild(createMessageRow(message, layout, { index }));
+        const row = createMessageRow(message, layout, { index });
+        const previous = messages[index - 1];
+        if (previous && previous.sender !== message.sender) {
+            row.classList.add("sender-break");
+        }
+        messageList.appendChild(row);
+        if (index === lastMineIndex) {
+            const readReceipt = createReadReceiptRow(index, attachReadReceiptToLatest);
+            if (readReceipt) {
+                messageList.appendChild(readReceipt);
+            }
+        }
     });
-
-
-    const readReceipt = createReadReceiptRow(attachReadReceiptToLatest);
-    if (readReceipt) {
-        messageList.appendChild(readReceipt);
-    }
     renderTypingIndicator();
 }
 
@@ -1028,6 +1481,7 @@ function handleSendReaction(reaction) {
     messages.push(createReactionMessage(reaction, "me"));
     persistMessages();
     appendLatestMessage();
+    scheduleAiReactionReply(reaction);
 }
 
 function bindReactionShortcut(element) {
@@ -1085,6 +1539,52 @@ function deleteMessage(index) {
     renderMessages();
 }
 
+function resolveContextIconKey(item) {
+    if (CONTEXT_ICON_PATHS[item.icon]) {
+        return item.icon;
+    }
+    if (item.icon === "â†©") {
+        return "reply";
+    }
+    if (item.icon === "â†ª") {
+        return "forward";
+    }
+    if (item.icon === "â§‰") {
+        return "copy";
+    }
+    if (item.icon === "æ–‡A") {
+        return "translate";
+    }
+    if (item.icon === "ðŸ—‘") {
+        return "delete";
+    }
+    if (item.action === "delete") {
+        return "delete";
+    }
+    return "translate";
+}
+
+function createContextIcon(iconKey) {
+    const iconConfig = CONTEXT_ICON_PATHS[iconKey] || CONTEXT_ICON_PATHS.copy;
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", iconConfig.viewBox);
+    svg.setAttribute("aria-hidden", "true");
+    svg.classList.add("context-menu-icon-svg");
+
+    iconConfig.paths.forEach((pathValue) => {
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", pathValue);
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", "currentColor");
+        path.setAttribute("stroke-width", "1.9");
+        path.setAttribute("stroke-linecap", "round");
+        path.setAttribute("stroke-linejoin", "round");
+        svg.appendChild(path);
+    });
+
+    return svg;
+}
+
 function setMessageReaction(index, emoji) {
     if (!messages[index]) return;
     const current = messages[index].reactionEmoji;
@@ -1093,7 +1593,6 @@ function setMessageReaction(index, emoji) {
     } else {
         messages[index].reactionEmoji = emoji;
     }
-    messages[index].reactionEmoji = emoji;
     persistMessages();
     closeContextMenu();
     renderMessages();
@@ -1105,29 +1604,98 @@ function createContextPreview(index) {
         return document.createElement("div");
     }
     const preview = document.createElement("div");
-    preview.className = "message-context-preview message-surface";
+    preview.className = "message-context-preview";
+    const currentRow = messageList.querySelector(`[data-message-index="${index}"]`);
+    if (currentRow) {
+        const clonedRow = currentRow.cloneNode(true);
+        clonedRow.classList.add("message-context-preview-row");
+        clonedRow.removeAttribute("data-message-index");
+        clonedRow.querySelector(".sticker-reply-chip")?.remove();
+        const sourceShell = currentRow.querySelector(".message-bubble-shell, .reaction-shell");
+        const clonedShell = clonedRow.querySelector(".message-bubble-shell, .reaction-shell");
+        if (sourceShell && clonedShell) {
+            const sourceWidth = Math.ceil(sourceShell.getBoundingClientRect().width);
+            clonedRow.style.setProperty("--preview-shell-width", `${sourceWidth}px`);
+            clonedShell.style.width = `${sourceWidth}px`;
+            clonedShell.style.maxWidth = `${sourceWidth}px`;
+        }
+        preview.appendChild(clonedRow);
+        return preview;
+    }
+
     const layout = computeMessageLayout(message, {
         previous: messages[index - 1],
         next: messages[index + 1]
     });
-    preview.appendChild(createMessageRow(message, layout, {
-        interactive: false,
-        preview: true
-    }));
+    preview.appendChild(createContextPreviewRow(message, layout));
     return preview;
 }
 
-function positionContextPanel(row, panel, sender) {
+function updateOtherContextPanelOffsets(row, panel) {
+    const anchor = row.querySelector(".message-bubble-shell, .reaction-shell");
+    if (!anchor) {
+        return;
+    }
     const rowRect = row.getBoundingClientRect();
+    const anchorRect = anchor.getBoundingClientRect();
+    const bubbleOffset = Math.round(anchorRect.left - rowRect.left);
+    const bubbleRightOffset = Math.round(anchorRect.right - rowRect.left);
+    const reactionBar = panel.querySelector(".message-context-reactions");
+    const preview = panel.querySelector(".message-context-preview");
+    const menu = panel.querySelector(".message-context-menu");
+    const isReactionRow = row.classList.contains("reaction-row");
+
+    if (isReactionRow) {
+        if (preview) {
+            preview.style.marginLeft = "0px";
+        }
+        if (reactionBar) {
+            reactionBar.style.marginLeft = `${Math.max(0, bubbleOffset)}px`;
+        }
+        if (menu) {
+            menu.style.marginLeft = `${Math.max(0, bubbleOffset)}px`;
+        }
+        panel.style.setProperty("--other-panel-shift", "0px");
+        return;
+    }
+
+    const reactionWidth = reactionBar ? Math.round(reactionBar.getBoundingClientRect().width) : 0;
+    const menuWidth = menu ? Math.round(menu.getBoundingClientRect().width) : 0;
+    const sharedPanelWidth = Math.max(reactionWidth, menuWidth);
+    const sharedOffset = bubbleRightOffset - sharedPanelWidth;
+    const panelShift = Math.min(0, sharedOffset);
+    const contentOffset = Math.max(0, sharedOffset);
+    const alignedOffset = Math.max(contentOffset, bubbleOffset);
+
+    if (preview) {
+        preview.style.marginLeft = "0px";
+    }
+    if (reactionBar) {
+        reactionBar.style.marginLeft = `${alignedOffset}px`;
+    }
+    if (menu) {
+        menu.style.marginLeft = `${alignedOffset}px`;
+    }
+    panel.style.setProperty("--other-panel-shift", `${panelShift}px`);
+}
+
+function positionContextPanel(row, panel, sender) {
+    const anchor = row.querySelector(".message-bubble-shell, .reaction-shell") || row;
+    const rowRect = row.getBoundingClientRect();
+    const anchorRect = anchor.getBoundingClientRect();
+    if (sender === "other") {
+        updateOtherContextPanelOffsets(row, panel);
+    }
     const panelRect = panel.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const horizontalPadding = 12;
     const verticalPadding = 16;
+    const otherPanelShift = Number.parseFloat(panel.style.getPropertyValue("--other-panel-shift")) || 0;
     const desiredLeft = sender === "me"
-        ? rowRect.right - panelRect.width
-        : rowRect.left;
-    const desiredTop = Math.max(verticalPadding, rowRect.top - 59);
+        ? anchorRect.right - panelRect.width
+        : rowRect.left + otherPanelShift;
+    const desiredTop = Math.max(verticalPadding, anchorRect.top - 59);
     const maxLeft = Math.max(horizontalPadding, viewportWidth - panelRect.width - horizontalPadding);
     const maxTop = Math.max(verticalPadding, viewportHeight - panelRect.height - verticalPadding);
     panel.style.left = `${clamp(desiredLeft, horizontalPadding, maxLeft)}px`;
@@ -1136,6 +1704,7 @@ function positionContextPanel(row, panel, sender) {
 
 function buildContextMenu(row, index) {
     const sender = messages[index].sender;
+    const selectedEmoji = messages[index].reactionEmoji || "";
     const backdrop = document.createElement("div");
     backdrop.className = "context-backdrop";
     const overlay = document.createElement("div");
@@ -1148,6 +1717,9 @@ function buildContextMenu(row, index) {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "context-emoji-btn";
+        if (selectedEmoji === emoji) {
+            button.classList.add("selected");
+        }
         button.textContent = emoji;
         button.addEventListener("click", (event) => {
             event.stopPropagation();
@@ -1164,8 +1736,9 @@ function buildContextMenu(row, index) {
         button.disabled = Boolean(item.disabled);
         const icon = document.createElement("span");
         icon.className = "context-menu-icon";
-        icon.textContent = item.icon;
+        icon.appendChild(createContextIcon(resolveContextIconKey(item)));
         const label = document.createElement("span");
+        label.className = "context-menu-label";
         label.textContent = item.label;
         button.append(icon, label);
         button.addEventListener("click", (event) => {
@@ -1179,11 +1752,30 @@ function buildContextMenu(row, index) {
         });
         menu.appendChild(button);
     });
-    panel.append(reactionBar, createContextPreview(index), menu);
+    const preview = createContextPreview(index);
+    if (sender === "other") {
+        panel.classList.add("other-clone-layout");
+        reactionBar.classList.add("context-grid-reactions");
+        preview.classList.add("context-grid-preview");
+        menu.classList.add("context-grid-menu");
+    }
+    panel.append(reactionBar, preview, menu);
     overlay.appendChild(panel);
-    backdrop.addEventListener("click", closeContextMenu);
-    overlay.addEventListener("click", (event) => event.stopPropagation());
-    panel.addEventListener("click", (event) => event.stopPropagation());
+    const handleEscape = (event) => {
+        if (event.key === "Escape") {
+            closeContextMenu();
+        }
+    };
+    backdrop.addEventListener("pointerdown", closeContextMenu);
+    overlay.addEventListener("pointerdown", (event) => {
+        if (event.target === overlay) {
+            closeContextMenu();
+        }
+    });
+    reactionBar.addEventListener("pointerdown", (event) => event.stopPropagation());
+    reactionBar.addEventListener("click", (event) => event.stopPropagation());
+    menu.addEventListener("pointerdown", (event) => event.stopPropagation());
+    menu.addEventListener("click", (event) => event.stopPropagation());
     contextRoot.append(backdrop, overlay);
     const handleViewportChange = () => positionContextPanel(row, panel, sender);
     positionContextPanel(row, panel, sender);
@@ -1191,7 +1783,16 @@ function buildContextMenu(row, index) {
     window.addEventListener("resize", handleViewportChange);
     window.visualViewport?.addEventListener("resize", handleViewportChange);
     window.visualViewport?.addEventListener("scroll", handleViewportChange);
-    contextMenu = { backdrop, overlay, row, index, handleViewportChange };
+    window.addEventListener("keydown", handleEscape);
+    contextMenu = {
+        backdrop,
+        overlay,
+        panel,
+        row,
+        index,
+        handleViewportChange,
+        handleEscape
+    };
 }
 
 function syncViewportLayout({ preserveScroll = true } = {}) {

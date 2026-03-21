@@ -112,10 +112,168 @@
         <div id="context-root" aria-hidden="true"></div>
     </main>
     <main id="setting-page">
+        <section class="settings-screen settings-screen-main active" id="settings-main-screen">
+            <header class="settings-header">
+                <button class="settings-icon-button" id="settings-back-button" type="button" aria-label="Quay lại">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </button>
+                <div class="settings-header-spacer"></div>
+                <button class="settings-icon-button settings-more-button" type="button" aria-label="Thêm">
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="6" cy="12" r="1.7" />
+                        <circle cx="12" cy="12" r="1.7" />
+                        <circle cx="18" cy="12" r="1.7" />
+                    </svg>
+                </button>
+            </header>
 
+            <section class="settings-profile">
+                <div class="settings-profile-badge">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M8.2 16.8V7.5l8.2 4.7-8.2 4.6Z" fill="currentColor" />
+                        <path d="M5.8 18.4V5.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                    </svg>
+                </div>
+                <h2 class="settings-profile-name">Lyrics</h2>
+            </section>
+
+            <section class="settings-quick-actions">
+                <button class="settings-action-card" type="button">
+                    <span class="settings-action-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
+                        </svg>
+                    </span>
+                    <span class="settings-action-label">Tạo nhóm</span>
+                </button>
+                <button class="settings-action-card" type="button">
+                    <span class="settings-action-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 12a3.4 3.4 0 1 0 0-6.8 3.4 3.4 0 0 0 0 6.8Z" fill="none" stroke="currentColor" stroke-width="1.9" />
+                            <path d="M5.2 19c1.5-2.5 3.7-3.7 6.8-3.7s5.3 1.2 6.8 3.7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+                        </svg>
+                    </span>
+                    <span class="settings-action-label">Xem hồ sơ</span>
+                </button>
+                <button class="settings-action-card" type="button">
+                    <span class="settings-action-icon">
+                        <svg viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="5.2" fill="none" stroke="currentColor" stroke-width="1.9" />
+                            <path d="M15.2 15.2 19 19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+                        </svg>
+                    </span>
+                    <span class="settings-action-label">Tìm kiếm</span>
+                </button>
+                <button class="settings-action-card" id="open-theme-settings-button" type="button">
+                    <span class="settings-action-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 3.8 13.8 7l3.6.6-2.5 2.5.6 3.7-3.5-1.6-3.5 1.6.6-3.7L6.6 7.6l3.6-.6L12 3.8Z"
+                                fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+                        </svg>
+                    </span>
+                    <span class="settings-action-label">Tùy chỉnh</span>
+                </button>
+            </section>
+
+            <section class="settings-panel-list">
+                <button class="settings-row-button" type="button" data-setting-row="mute_notifications">
+                    <span class="settings-row-leading">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M9.5 9.6 6.8 6.9M14.5 14.4l2.7 2.7M7.2 14.8l9.6-9.6" fill="none" stroke="currentColor"
+                                stroke-width="1.9" stroke-linecap="round" />
+                            <path d="M8 18.2c0-2.4 1.6-4 4-4 2.4 0 4 1.6 4 4" fill="none" stroke="currentColor" stroke-width="1.9"
+                                stroke-linecap="round" />
+                        </svg>
+                    </span>
+                    <span class="settings-row-label">Tắt thông báo</span>
+                    <span class="settings-switch" data-setting-switch="mute_notifications" role="switch" aria-checked="false">
+                        <span class="settings-switch-thumb"></span>
+                    </span>
+                </button>
+                <button class="settings-row-button" type="button" data-setting-row="pin_to_top">
+                    <span class="settings-row-leading">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M7.2 20V6.4c0-.8.6-1.4 1.4-1.4H17l-1.8 3 1.8 3H8.6" fill="none" stroke="currentColor"
+                                stroke-width="1.9" stroke-linejoin="round" />
+                        </svg>
+                    </span>
+                    <span class="settings-row-label">Ghim lên đầu</span>
+                    <span class="settings-switch active" data-setting-switch="pin_to_top" role="switch" aria-checked="true">
+                        <span class="settings-switch-thumb"></span>
+                    </span>
+                </button>
+                <button class="settings-row-button has-chevron" type="button">
+                    <span class="settings-row-leading">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M6.8 5.8h10.4v7.6H12l-3.8 3v-3H6.8Z" fill="none" stroke="currentColor" stroke-width="1.9"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </span>
+                    <span class="settings-row-label">Báo cáo</span>
+                    <span class="settings-row-chevron">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                    </span>
+                </button>
+            </section>
+        </section>
+
+        <section class="settings-screen settings-screen-themes" id="theme-settings-screen">
+            <header class="settings-subpage-header">
+                <button class="settings-icon-button" id="theme-settings-back-button" type="button" aria-label="Quay lại">
+                    <svg viewBox="0 0 1024 1024">
+                        <path d="M224 480h640a32 32 0 110 64H224a32 32 0 010-64z" fill="currentColor" />
+                        <path
+                            d="M237.248 512l265.408 265.344a32 32 0 01-45.312 45.312l-288-288a32 32 0 010-45.312l288-288a32 32 0 1145.312 45.312L237.248 512z"
+                            fill="currentColor" />
+                    </svg>
+                </button>
+                <h2 class="settings-subpage-title">Tùy chỉnh</h2>
+            </header>
+
+            <nav class="settings-tabs" aria-label="Danh mục tùy chỉnh">
+                <button class="settings-tab active" type="button">Chủ đề</button>
+                <button class="settings-tab" type="button">Cảm xúc nhanh</button>
+                <button class="settings-tab" type="button">Hiệu ứng từ ngữ</button>
+            </nav>
+
+            <section class="theme-feature-grid">
+                <button class="theme-feature-card" type="button">
+                    <span class="theme-feature-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 4.2 13.4 7l3 .5-2.2 2.1.5 3.1-2.7-1.4-2.7 1.4.5-3.1-2.2-2.1 3-.5L12 4.2Z"
+                                fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+                            <circle cx="17.8" cy="6.2" r="1.2" fill="currentColor" />
+                        </svg>
+                    </span>
+                    <span class="theme-feature-label">Chủ đề AI</span>
+                </button>
+                <button class="theme-feature-card" type="button">
+                    <span class="theme-feature-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M6 17.6V6.4c0-.8.6-1.4 1.4-1.4h9.2c.8 0 1.4.6 1.4 1.4v11.2c0 .8-.6 1.4-1.4 1.4H7.4c-.8 0-1.4-.6-1.4-1.4Z"
+                                fill="none" stroke="currentColor" stroke-width="1.8" />
+                            <path d="m9 13 2-2 2.2 2.2 1.8-1.8L17 13.4" fill="none" stroke="currentColor" stroke-width="1.8"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                            <circle cx="9.1" cy="8.9" r="1.1" fill="currentColor" />
+                        </svg>
+                    </span>
+                    <span class="theme-feature-label">Tải hình ảnh lên</span>
+                </button>
+            </section>
+
+            <section class="theme-grid" id="theme-grid"></section>
+        </section>
     </main>
     <script src="theme.js"></script>
-    <script src="app.js"></script>
+    <script src="js/app-core.js"></script>
+    <script src="js/app-ui.js"></script>
+    <script src="js/app-bootstrap.js"></script>
 </body>
 
 </html>

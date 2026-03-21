@@ -11,6 +11,7 @@
     --incoming-text: #ffffff;
     --send-button: #fe2b54;
     --camera-button: #00a2c9;
+    --danger-color: #ff5a66;
     --system-text: rgba(255, 255, 255, 0.56);
     --context-menu-me-bg: rgba(0, 188, 212, 0.24);
     --context-menu-other-bg: rgba(33, 33, 33, 0.94);
@@ -33,6 +34,7 @@
     --incoming-text: #fff0f6;
     --send-button: #ff4c83;
     --camera-button: #ff7baa;
+    --danger-color: #ff6b8f;
     --system-text: rgba(255, 240, 246, 0.76);
 }
 
@@ -49,6 +51,7 @@
     --incoming-text: #ffffff;
     --send-button: #fe2b54;
     --camera-button: #00a2c9;
+    --danger-color: #ff6b76;
     --system-text: rgba(255, 255, 255, 0.56);
 }
 
@@ -65,5 +68,6 @@
     --incoming-text: #eff6ff;
     --send-button: #5a7cff;
     --camera-button: #38bdf8;
+    --danger-color: #ff7a8a;
     --system-text: rgba(238, 244, 255, 0.68);
 }
