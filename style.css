@@ -297,7 +297,7 @@ header>svg {
     --bubble-bottom-right-radius: 15px;
     --bubble-tail-bg: var(--incoming-bubble);
     --other-avatar-inline-size: 24px;
-    --other-avatar-gap: 4px;
+    --other-avatar-gap: 7px;
     --bubble-max-inline-size: min(300px, calc(var(--message-surface-inline-size, 100vw) * 0.85));
     --other-content-max-inline-size: var(--bubble-max-inline-size);
     display: grid;
@@ -584,7 +584,7 @@ header>svg {
     width: 18px;
     height: 18px;
     background: var(--bubble-tail-bg) !important;
-    clip-path: polygon(0 0, 100% 100%, 0 100%);
+    clip-path: path("M0 2 C6 7, 12 13, 18 18 L0 18 Z");
 }
 
 .message-row.group-bottom.other .message-bubble::after,
@@ -596,7 +596,7 @@ header>svg {
     width: 18px;
     height: 18px;
     background: var(--bubble-tail-bg);
-    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    clip-path: path("M18 2 C12 7, 6 13, 0 18 L18 18 Z");
 }
 
 .message-emoji-reaction {
@@ -693,7 +693,7 @@ header>svg {
 
 .sticker-reply-label {
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     white-space: nowrap;
 }
 
@@ -773,8 +773,6 @@ header>svg {
 }
 
 .message-context-preview-row {
-    width: max-content;
-    max-width: var(--bubble-max-inline-size);
     margin: 0 !important;
     pointer-events: none;
 }
@@ -783,12 +781,6 @@ header>svg {
     grid-template-columns: max-content;
     column-gap: 0;
     justify-items: start;
-}
-
-.message-context-preview-row .message-bubble-shell,
-.message-context-preview-row .reaction-shell {
-    width: var(--preview-shell-width, auto);
-    max-width: var(--preview-shell-width, var(--bubble-max-inline-size));
 }
 
 .message-context-preview .message-bubble-shell,

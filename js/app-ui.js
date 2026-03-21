@@ -937,15 +937,20 @@ function createContextPreview(index) {
         clonedRow.classList.add("message-context-preview-row");
         clonedRow.removeAttribute("data-message-index");
         clonedRow.querySelector(".sticker-reply-chip")?.remove();
-        const sourceShell = currentRow.querySelector(".message-bubble-shell, .reaction-shell");
-        const clonedShell = clonedRow.querySelector(".message-bubble-shell, .reaction-shell");
+        const rowComputed = window.getComputedStyle(currentRow);
         const sourceBubble = currentRow.querySelector(".message-bubble");
         const clonedBubble = clonedRow.querySelector(".message-bubble");
-        if (sourceShell && clonedShell) {
-            const sourceWidth = Math.ceil(sourceShell.getBoundingClientRect().width);
-            clonedRow.style.setProperty("--preview-shell-width", `${sourceWidth}px`);
-            clonedShell.style.width = `${sourceWidth}px`;
-            clonedShell.style.maxWidth = `${sourceWidth}px`;
+        const surfaceInlineSize = rowComputed.getPropertyValue("--message-surface-inline-size").trim();
+        const bubbleMaxInlineSize = rowComputed.getPropertyValue("--bubble-max-inline-size").trim();
+        const otherContentMaxInlineSize = rowComputed.getPropertyValue("--other-content-max-inline-size").trim();
+        if (surfaceInlineSize) {
+            clonedRow.style.setProperty("--message-surface-inline-size", surfaceInlineSize);
+        }
+        if (bubbleMaxInlineSize) {
+            clonedRow.style.setProperty("--bubble-max-inline-size", bubbleMaxInlineSize);
+        }
+        if (otherContentMaxInlineSize) {
+            clonedRow.style.setProperty("--other-content-max-inline-size", otherContentMaxInlineSize);
         }
         if (sourceBubble && clonedBubble) {
             const computed = window.getComputedStyle(sourceBubble);
@@ -1000,7 +1005,10 @@ function updateOtherContextPanelOffsets(row, panel) {
         panel.style.setProperty("--other-content-offset", `${alignedOffset}px`);
         return;
     }
-    const alignedOffset = 28;
+    const computedRow = window.getComputedStyle(row);
+    const avatarInlineSize = Number.parseFloat(computedRow.getPropertyValue("--other-avatar-inline-size")) || 24;
+    const avatarGap = Number.parseFloat(computedRow.getPropertyValue("--other-avatar-gap")) || 4;
+    const alignedOffset = Math.round(avatarInlineSize + avatarGap);
 
     if (preview) {
         preview.style.marginLeft = "0px";
