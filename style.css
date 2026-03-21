@@ -299,7 +299,7 @@ header>svg {
     --other-avatar-inline-size: 24px;
     --other-avatar-gap: 4px;
     --bubble-max-inline-size: min(300px, calc(var(--message-surface-inline-size, 100vw) * 0.85));
-    --other-content-max-inline-size: calc(var(--bubble-max-inline-size) - 6px);
+    --other-content-max-inline-size: var(--bubble-max-inline-size);
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: end;
@@ -327,7 +327,7 @@ header>svg {
 }
 
 .message-row.other {
-    grid-template-columns: var(--other-avatar-inline-size) auto;
+    grid-template-columns: var(--other-avatar-inline-size) max-content;
     column-gap: var(--other-avatar-gap);
     justify-content: start;
     justify-items: start;
@@ -335,7 +335,10 @@ header>svg {
 
 .message-row.other.type-text:not(.no-avatar-lane),
 .message-row.other.type-image:not(.no-avatar-lane) {
-    grid-template-columns: var(--other-avatar-inline-size) auto;
+    display: flex;
+    align-items: flex-end;
+    gap: var(--other-avatar-gap);
+    justify-content: flex-start;
 }
 
 .message-row.other.reaction-row {
@@ -406,14 +409,16 @@ header>svg {
 
 .message-bubble-shell {
     position: relative;
-    display: inline-flex;
+    display: inline-block;
     overflow: visible;
+    width: max-content;
     max-width: var(--bubble-max-inline-size);
 }
 
 .message-bubble {
     position: relative;
-    width: fit-content;
+    width: auto;
+    display: inline-block;
     max-width: 100%;
     padding: 11px 14px;
     box-sizing: border-box;
