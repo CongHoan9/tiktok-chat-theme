@@ -7,32 +7,32 @@ const THEME_DEFINITIONS = [
     {
         id: "theme-dark",
         name: "Đêm đen",
-        previewStyle: "linear-gradient(180deg, #1c1c1c 0%, #090909 100%)"
+        previewStyle: "#101010"
     },
     {
         id: "theme-blue",
         name: "Biển xanh",
-        previewStyle: "linear-gradient(180deg, #17386f 0%, #0c1a33 100%)"
+        previewStyle: "#16315f"
     },
     {
         id: "",
         name: "BTS",
-        previewStyle: "linear-gradient(135deg, #ff466e 0%, #b10035 42%, #0f0f0f 42%, #0f0f0f 100%)"
+        previewStyle: "#b10035"
     },
     {
         id: "",
         name: "Khu vườn trên mây",
-        previewStyle: "linear-gradient(180deg, #f4c0d3 0%, #f8dce7 40%, #d2a8c0 100%)"
+        previewStyle: "#f4c0d3"
     },
     {
         id: "",
         name: "Bóng rổ",
-        previewStyle: "linear-gradient(180deg, #4b4b4b 0%, #1a1a1a 100%)"
+        previewStyle: "#2a2a2a"
     },
     {
         id: "",
         name: "BLACKPINK",
-        previewStyle: "linear-gradient(180deg, #0f0f14 0%, #ff9ccb 100%)"
+        previewStyle: "#ff9ccb"
     }
 ];
 

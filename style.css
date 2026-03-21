@@ -335,10 +335,21 @@ header>svg {
 
 .message-row.other.type-text:not(.no-avatar-lane),
 .message-row.other.type-image:not(.no-avatar-lane) {
+    --other-content-max-inline-size: calc(var(--bubble-max-inline-size) - var(--other-avatar-inline-size) - var(--other-avatar-gap));
     display: flex;
     align-items: flex-end;
     gap: var(--other-avatar-gap);
     justify-content: flex-start;
+    width: var(--message-surface-inline-size, 100%);
+    max-width: 100%;
+}
+
+.message-row.other.type-text:not(.no-avatar-lane) .message-bubble-shell,
+.message-row.other.type-image:not(.no-avatar-lane) .message-bubble-shell {
+    flex: 0 1 auto;
+    width: fit-content !important;
+    min-width: 0;
+    max-width: var(--other-content-max-inline-size) !important;
 }
 
 .message-row.other.reaction-row {
