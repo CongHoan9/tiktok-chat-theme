@@ -45,7 +45,7 @@
     --div-color: #242424;
     --input-color: #ffffff;
     --placeholder-color: rgba(255, 255, 255, 0.6);
-    --outgoing-bubble: linear-gradient(135deg, #18c4e0 0%, #00a7ff 100%);
+    --outgoing-bubble: #00a7ff;
     --outgoing-text: #ffffff;
     --incoming-bubble: #272727;
     --incoming-text: #ffffff;
@@ -62,7 +62,7 @@
     --div-color: #142b52;
     --input-color: #eef4ff;
     --placeholder-color: rgba(238, 244, 255, 0.62);
-    --outgoing-bubble: linear-gradient(135deg, #4d8dff 0%, #7bcbff 100%);
+    --outgoing-bubble: #5a8fff;
     --outgoing-text: #eff6ff;
     --incoming-bubble: #16315f;
     --incoming-text: #eff6ff;
