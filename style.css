@@ -87,7 +87,7 @@ footer {
     min-width: 0;
     box-sizing: border-box;
     overflow: hidden;
-    padding: 10px 10px calc(env(safe-area-inset-bottom, 0px) + 10px) !important;
+    padding: 10px 10px calc(env(safe-area-inset-bottom, 0px) + 10px + var(--keyboard-inset)) !important;
 }
 
 #icons {
@@ -176,7 +176,7 @@ footer {
     --viewport-offset-top: 0px;
     --keyboard-inset: 0px;
     position: fixed;
-    top: var(--viewport-offset-top);
+    top: 0;
     right: 0;
     left: 0;
     width: 100%;
@@ -209,27 +209,29 @@ footer {
 }
 
 #chat-background {
-    position: absolute !important;
+    z-index: 0;
+    overflow: hidden;
+    user-select: none;
     top: 0 !important;
+    touch-action: none;
+    pointer-events: none;
     bottom: 0 !important;
     left: 50% !important;
-    width: min(100%, calc(var(--page-content-max-width) + (var(--page-inline-padding) * 2))) !important;
     height: auto !important;
-    transform: translateX(-50%);
-    z-index: 0;
-    pointer-events: none;
-    overflow: hidden;
-    touch-action: none;
+    min-height: 0;
     overscroll-behavior: none;
-    user-select: none;
+    transform: translateX(-50%);
+    position: absolute !important;
+    background-position: top center !important;
+    width: min(100%, calc(var(--page-content-max-width) + (var(--page-inline-padding) * 2))) !important;
 }
 
 .chat-background-image {
     user-select: none;
     touch-action: none;
     inset: 0 !important;
-    width: auto !important;
-    height: 100%  !important;
+    width: 100% !important;
+    height: 100% !important;
     position: absolute !important;
     pointer-events: none !important;
     background-size: cover !important;
