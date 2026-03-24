@@ -1,73 +1,15 @@
 :root {
-    --bg-image: none;
-    --bg-color: black;
-    --svg-color: white;
-    --div-color: #212121;
-    --input-color: white;
-    --placeholder-color: rgba(255, 255, 255, 0.68);
-    --outgoing-bubble: #00bcd4;
-    --outgoing-text: #ffffff;
-    --incoming-bubble: #212121;
-    --incoming-text: #ffffff;
-    --send-button: #fe2b54;
-    --camera-button: #00a2c9;
-    --danger-color: #ff5a66;
-    --system-text: rgba(255, 255, 255, 0.56);
-    --context-menu-me-bg: rgba(0, 188, 212, 0.24);
-    --context-menu-other-bg: rgba(33, 33, 33, 0.94);
-    --context-menu-me-icon-bg: rgba(255, 255, 255, 0.18);
-    --context-menu-other-icon-bg: rgba(255, 255, 255, 0.1);
-    --reaction-badge-me-bg: rgba(0, 188, 212, 0.3);
-    --reaction-badge-other-bg: rgba(33, 33, 33, 0.92);
-}
-
-.theme-love {
-    --bg-image: url("image/love.jpg");
-    --bg-color: #921f4a;
-    --svg-color: #ffaecf;
-    --div-color: #ffaecf;
-    --input-color: #921f4a;
-    --placeholder-color: #921f4a;
-    --outgoing-bubble: #ff9ec2;
-    --outgoing-text: #6d1436;
-    --incoming-bubble: #661234;
-    --incoming-text: #fff0f6;
-    --send-button: #ff4c83;
-    --camera-button: #ff7baa;
-    --danger-color: #ff6b8f;
-    --system-text: rgba(255, 240, 246, 0.76);
-}
-
-.theme-dark {
-    --bg-image: none;
-    --bg-color: #111;
-    --svg-color: #ffffff;
-    --div-color: #242424;
-    --input-color: #ffffff;
-    --placeholder-color: rgba(255, 255, 255, 0.6);
-    --outgoing-bubble: #00a7ff;
-    --outgoing-text: #ffffff;
-    --incoming-bubble: #272727;
-    --incoming-text: #ffffff;
-    --send-button: #fe2b54;
-    --camera-button: #00a2c9;
-    --danger-color: #ff6b76;
-    --system-text: rgba(255, 255, 255, 0.56);
-}
-
-.theme-blue {
-    --bg-image: none;
-    --bg-color: #0b1d3a;
-    --svg-color: #dce7ff;
-    --div-color: #142b52;
-    --input-color: #eef4ff;
-    --placeholder-color: rgba(238, 244, 255, 0.62);
-    --outgoing-bubble: #5a8fff;
-    --outgoing-text: #eff6ff;
-    --incoming-bubble: #16315f;
-    --incoming-text: #eff6ff;
-    --send-button: #5a7cff;
-    --camera-button: #38bdf8;
-    --danger-color: #ff7a8a;
-    --system-text: rgba(238, 244, 255, 0.68);
+    --chat-background-layer: #000000;
+    --app-surface-color: #000000;
+    --ui-accent-color: #2377ff;
+    --outgoing-bubble-background: #2377ff;
+    --outgoing-bubble-text-color: #ffffff;
+    --incoming-bubble-background: #34395d;
+    --incoming-bubble-text-color: #ffffff;
+    --composer-surface-color: #1F1F1F;
+    --sticker-tray-surface-color: #1F1F1F;
+    --sticker-tray-text-color: #ffffff;
+    --send-accent-color: #FE2C55;
+    --danger-accent-color: #ff6b76;
+    --system-text-color: rgba(255, 255, 255, 0.66);
 }

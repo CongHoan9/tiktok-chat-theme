@@ -11,34 +11,37 @@
 
 <body>
     <main id="chat-page">
-        <div id="chat-background" aria-hidden="true">
+        <div id="chat-background" class="page-shell" aria-hidden="true">
             <div class="chat-background-image"></div>
         </div>
-        <header>
-            <svg id="back-button" viewBox="0 0 1024 1024">
-                <path d="M224 480h640a32 32 0 110 64H224a32 32 0 010-64z" />
-                <path
-                    d="M237.248 512l265.408 265.344a32 32 0 01-45.312 45.312l-288-288a32 32 0 010-45.312l288-288a32 32 0 1145.312 45.312L237.248 512z" />
-            </svg>
-            <div>
-                <img src="image/avata.jpg">
+        <header class="chat-header">
+            <div class="page-shell chat-header-shell">
+                <svg id="back-button" viewBox="0 0 1024 1024">
+                    <path d="M224 480h640a32 32 0 110 64H224a32 32 0 010-64z" />
+                    <path
+                        d="M237.248 512l265.408 265.344a32 32 0 01-45.312 45.312l-288-288a32 32 0 010-45.312l288-288a32 32 0 1145.312 45.312L237.248 512z" />
+                </svg>
+                <div class="chat-header-avatar">
+                    <img src="image/avata.jpg">
+                </div>
+                <span>Người dùng</span>
+                <div class="chat-header-spacer" aria-hidden="true"></div>
+                <svg id="report-button" viewBox="0 0 24 24">
+                    <path
+                        d="M4 21V15.6871M4 15.6871C9.81818 11.1377 14.1818 20.2363 20 15.6869V4.31347C14.1818 8.86284 9.81818 -0.236103 4 4.31327V15.6871Z"
+                        stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <svg id="setting-button" viewBox="0 0 24 24">
+                    <circle cx="18" cy="12" r="1.5" transform="rotate(90 18 12)" />
+                    <circle cx="12" cy="12" r="1.5" transform="rotate(90 12 12)" />
+                    <circle cx="6" cy="12" r="1.5" transform="rotate(90 6 12)" />
+                </svg>
             </div>
-            <span>Người dùng</span>
-            <div></div>
-            <svg id="report-button" viewBox="0 0 24 24">
-                <path
-                    d="M4 21V15.6871M4 15.6871C9.81818 11.1377 14.1818 20.2363 20 15.6869V4.31347C14.1818 8.86284 9.81818 -0.236103 4 4.31327V15.6871Z"
-                    stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            <svg id="setting-button" viewBox="0 0 24 24">
-                <circle cx="18" cy="12" r="1.5" transform="rotate(90 18 12)" />
-                <circle cx="12" cy="12" r="1.5" transform="rotate(90 12 12)" />
-                <circle cx="6" cy="12" r="1.5" transform="rotate(90 6 12)" />
-            </svg>
         </header>
-        <section id="message-list" class="message-surface" aria-label="Tin nhắn"></section>
+        <div class="page-shell chat-shell">
+        <section id="message-list" class="page-shell" aria-label="Tin nhắn"></section>
         <footer>
-            <div id="icons">
+            <div id="icons" >
                 <div class="reaction-shortcut" data-reaction="love" role="button">
                     <img src="image/heart.png">
                 </div>
@@ -76,7 +79,7 @@
                             d="M9.7778 21H14.2222C17.3433 21 18.9038 21 20.0248 20.2646 20.51 19.9462 20.9267 19.5371 21.251 19.0607 22 17.9601 22 16.4279 22 13.3636 22 10.2994 22 8.7672 21.251 7.6666 20.9267 7.1901 20.51 6.781 20.0248 6.4627 19.3044 5.9901 18.4027 5.8212 17.022 5.7609 16.3631 5.7609 15.7959 5.2707 15.6667 4.6364 15.4728 3.6849 14.6219 3 13.6337 3H10.3663C9.378 3 8.5272 3.6849 8.3333 4.6364 8.2041 5.2707 7.6368 5.7609 6.978 5.7609 5.5973 5.8212 4.6955 5.9901 3.9752 6.4627 3.4899 6.781 3.0733 7.1901 2.749 7.6666 2 8.7672 2 10.2994 2 13.3636 2 16.4279 2 17.9601 2.749 19.0607 3.0733 19.5371 3.4899 19.9462 3.9752 20.2646 5.0962 21 6.6567 21 9.7778 21ZM12 9.2727C9.6988 9.2727 7.8333 11.1043 7.8333 13.3636 7.8333 15.623 9.6988 17.4545 12 17.4545 14.3012 17.4545 16.1667 15.623 16.1667 13.3636 16.1667 11.1043 14.3012 9.2727 12 9.2727ZM12 10.9091C10.6193 10.9091 9.5 12.008 9.5 13.3636 9.5 14.7192 10.6193 15.8182 12 15.8182 13.3807 15.8182 14.5 14.7192 14.5 13.3636 14.5 12.008 13.3807 10.9091 12 10.9091Z" />
                     </svg>
                 </div>
-                <input id="input-textbox" type="text" placeholder="Nhắn tin...">
+                <textarea id="input-textbox" rows="1" placeholder="Nhắn tin..."></textarea>
                 <div id="image-button">
                     <svg viewBox="-1 0 24 24">
                         <path
@@ -109,11 +112,14 @@
                 </div>
             </div>
         </footer>
+        </div>
         <div id="context-root" aria-hidden="true"></div>
     </main>
     <main id="setting-page">
+        <div class="page-shell settings-shell">
         <section class="settings-screen settings-screen-main active" id="settings-main-screen">
             <header class="settings-header">
+                <div class="page-shell settings-header-shell">
                 <button class="settings-icon-button" id="settings-back-button" type="button" aria-label="Quay lại">
                     <svg viewBox="0 0 24 24">
                         <path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
@@ -128,6 +134,7 @@
                         <circle cx="18" cy="12" r="1.7" />
                     </svg>
                 </button>
+                </div>
             </header>
 
             <section class="settings-profile">
@@ -143,7 +150,7 @@
             <section class="settings-quick-actions">
                 <button class="settings-action-card" type="button">
                     <span class="settings-action-icon">
-                        <svg viewBox="0 0 24 24">
+                        <svg viewBox="-1 -1 25 25">
                             <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" />
                         </svg>
                     </span>
@@ -151,9 +158,9 @@
                 </button>
                 <button class="settings-action-card" type="button">
                     <span class="settings-action-icon">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M12 12a3.4 3.4 0 1 0 0-6.8 3.4 3.4 0 0 0 0 6.8Z" fill="none" stroke="currentColor" stroke-width="1.9" />
-                            <path d="M5.2 19c1.5-2.5 3.7-3.7 6.8-3.7s5.3 1.2 6.8 3.7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+                        <svg viewBox="-1 -1 25 25">
+                            <path d="M7 6C7.003 3.017 9.007.994 12.001.996 14.963 1.008 17.013 3.013 17.001 6 17 8.978 14.986 10.977 12.001 11.001 9.018 10.997 7.005 9.008 7 6Z" fill="currentColor" />
+                            <path d="M2.043 20.669C2.043 20.669 1.976 13.029 11.997 13.005 21.93 13.071 21.941 20.659 21.941 20.6587 21.941 20.659 21.985 21.998 20.9592 22H3.0346C1.997 21.991 2.043 20.669 2.043 20.669Z" fill="currentColor"/>
                         </svg>
                     </span>
                     <span class="settings-action-label">Xem hồ sơ</span>
@@ -161,8 +168,8 @@
                 <button class="settings-action-card" type="button">
                     <span class="settings-action-icon">
                         <svg viewBox="0 0 24 24">
-                            <circle cx="11" cy="11" r="5.2" fill="none" stroke="currentColor" stroke-width="1.9" />
-                            <path d="M15.2 15.2 19 19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+                            <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="3" />
+                            <path d="M16.013 15.983 19.99 19.981" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
                         </svg>
                     </span>
                     <span class="settings-action-label">Tìm kiếm</span>
@@ -170,8 +177,8 @@
                 <button class="settings-action-card" id="open-theme-settings-button" type="button">
                     <span class="settings-action-icon">
                         <svg viewBox="0 0 24 24">
-                            <path d="M12 3.8 13.8 7l3.6.6-2.5 2.5.6 3.7-3.5-1.6-3.5 1.6.6-3.7L6.6 7.6l3.6-.6L12 3.8Z"
-                                fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+                            <path d="M19.54 5.08A10.61 10.61 0 0011.91 2a10 10 0 00-.05 20c.018.004 4.161.009 4.174-.986-.057-.992-4.024-2.999-4.024-3.009C11.443 17.658 11.571 16.979 12.351 16.999H17.999C21 17.021 22.005 15.091 22 11.33a8.48 8.48 0 00-2.46-6.25zm-14.008 7.568a1.5 1.5 0 112.388-1.475 1.49 1.49 0 01-2.389 1.475zM9.259 7.994a1.5 1.5 0 111.706-1.566 1.5 1.5 0 01-1.703 1.566zM15.006 8.003a1.5 1.5 0 111.992-.904A1.5 1.5 0 0115.006 8.003zM19.006 12.606A1.5 1.5 0 1118.242 11.225 1.5 1.5 0 0119.017 12.629z"
+                                fill="currentColor"/>
                         </svg>
                     </span>
                     <span class="settings-action-label">Tùy chỉnh</span>
@@ -179,13 +186,17 @@
             </section>
 
             <section class="settings-panel-list">
-                <button class="settings-row-button" type="button" data-setting-row="mute_notifications">
+                <div class="settings-toggle-card" role="group" aria-label="Tuy chon doan chat">
+                    <button class="settings-row-button settings-row-button-grouped" type="button" data-setting-row="mute_notifications">
                     <span class="settings-row-leading">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M9.5 9.6 6.8 6.9M14.5 14.4l2.7 2.7M7.2 14.8l9.6-9.6" fill="none" stroke="currentColor"
-                                stroke-width="1.9" stroke-linecap="round" />
-                            <path d="M8 18.2c0-2.4 1.6-4 4-4 2.4 0 4 1.6 4 4" fill="none" stroke="currentColor" stroke-width="1.9"
-                                stroke-linecap="round" />
+                        <svg viewBox="0 0 24 24" fill="none" transform="matrix(-1, 0, 0, 1, 0, 0)">
+                                <path d="M12 0C7.90392 0 4.58336 3.32056 4.58336 7.41667V8.33334C4.58336 9.94634 4.42274 11.4324 4.1541 12.6546C4.05874 13.0884 4.26097 13.5331 4.65058 13.7464C5.04019 13.9597 5.52381 13.8904 5.83789 13.5764L16.4808 2.93348C16.6875 2.72676 16.7934 2.43994 16.7706 2.14849C16.7478 1.85703 16.5987 1.59014 16.3624 1.41803C15.1381 0.526355 13.629 0 12 0Z"
+                                    fill="currentColor" />
+                                <path fill-rule="evenodd" clip-rule="evenodd"
+                                    d="M23.3535 2.76776C23.744 2.37723 23.744 1.74407 23.3535 1.35354L22.6464 0.646438C22.2559 0.255913 21.6227 0.255913 21.2322 0.646438L0.646409 21.2322C0.255885 21.6227 0.255884 22.2559 0.646408 22.6464L1.35351 23.3535C1.74404 23.7441 2.3772 23.7441 2.76773 23.3535L8.32961 17.7917H21.1667C21.719 17.7917 22.1667 17.3439 22.1667 16.7917V16.5833C22.1667 16.0346 21.7247 15.5891 21.1773 15.5834C21.1539 15.5761 21.0522 15.5324 20.8817 15.316C20.6514 15.0238 20.4003 14.539 20.1708 13.8507C19.7155 12.4847 19.4167 10.5339 19.4167 8.33333V7.41666C19.4167 7.18719 19.4063 6.95997 19.3858 6.73549L23.3535 2.76776Z"
+                                    fill="currentColor" />
+                                <path d="M9.24998 19.5C8.87243 19.5 8.52707 19.7126 8.35707 20.0497C8.18708 20.3869 8.22144 20.791 8.44591 21.0945C9.27803 22.2199 10.5351 23 12 23C13.4649 23 14.7219 22.2199 15.554 21.0945C15.7785 20.791 15.8129 20.3869 15.6429 20.0497C15.4729 19.7126 15.1275 19.5 14.75 19.5H9.24998Z"
+                                    fill="currentColor" />
                         </svg>
                     </span>
                     <span class="settings-row-label">Tắt thông báo</span>
@@ -193,11 +204,11 @@
                         <span class="settings-switch-thumb"></span>
                     </span>
                 </button>
-                <button class="settings-row-button" type="button" data-setting-row="pin_to_top">
+                    <button class="settings-row-button settings-row-button-grouped" type="button" data-setting-row="pin_to_top">
                     <span class="settings-row-leading">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M7.2 20V6.4c0-.8.6-1.4 1.4-1.4H17l-1.8 3 1.8 3H8.6" fill="none" stroke="currentColor"
-                                stroke-width="1.9" stroke-linejoin="round" />
+                        <svg viewBox="2 2 20 20">
+                            <path d="M19 4H5M12 20 12 8M12.995 7.002 7 12.965M10.996 6.981 17.01 13.01" fill="none" stroke="currentColor"
+                                stroke-width="3" stroke-linejoin="round"/>
                         </svg>
                     </span>
                     <span class="settings-row-label">Ghim lên đầu</span>
@@ -205,11 +216,13 @@
                         <span class="settings-switch-thumb"></span>
                     </span>
                 </button>
+                </div>
                 <button class="settings-row-button has-chevron" type="button">
                     <span class="settings-row-leading">
                         <svg viewBox="0 0 24 24">
-                            <path d="M6.8 5.8h10.4v7.6H12l-3.8 3v-3H6.8Z" fill="none" stroke="currentColor" stroke-width="1.9"
-                                stroke-linejoin="round" />
+                            <path
+                                d="M4 21V15.6871M4 15.6871C9.81818 11.1377 14.1818 20.2363 20 15.6869V4.31347C14.1818 8.86284 9.81818 -0.236103 4 4.31327V15.6871Z"
+                                fill="currentColor" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path>
                         </svg>
                     </span>
                     <span class="settings-row-label">Báo cáo</span>
@@ -222,9 +235,9 @@
                 </button>
             </section>
         </section>
-
         <section class="settings-screen settings-screen-themes" id="theme-settings-screen">
             <header class="settings-subpage-header">
+                <div class="page-shell settings-subpage-header-shell">
                 <button class="settings-icon-button" id="theme-settings-back-button" type="button" aria-label="Quay lại">
                     <svg viewBox="0 0 1024 1024">
                         <path d="M224 480h640a32 32 0 110 64H224a32 32 0 010-64z" fill="currentColor" />
@@ -234,8 +247,8 @@
                     </svg>
                 </button>
                 <h2 class="settings-subpage-title">Tùy chỉnh</h2>
+                </div>
             </header>
-
             <nav class="settings-tabs" aria-label="Danh mục tùy chỉnh">
                 <button class="settings-tab active" type="button">Chủ đề</button>
                 <button class="settings-tab" type="button">Cảm xúc nhanh</button>
@@ -269,6 +282,7 @@
 
             <section class="theme-grid" id="theme-grid"></section>
         </section>
+        </div>
     </main>
     <script src="theme.js"></script>
     <script src="js/app-core.js"></script>

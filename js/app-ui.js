@@ -19,7 +19,7 @@ function backToChat() {
     messageList.style.touchAction = "pan-y";
     settingPage.style.display = "none";
     settingPage.style.pointerEvents = "none";
-    chatPage.style.display = "grid";
+    chatPage.style.removeProperty("display");
     chatPage.style.pointerEvents = "auto";
     requestAnimationFrame(() => {
         syncViewportLayout({ preserveScroll: true });
@@ -32,6 +32,7 @@ const defaultSettingsToggles = {
     mute_notifications: false,
     pin_to_top: true
 };
+const COMPOSER_MAX_ROWS = 5;
 const MEASURED_BUBBLE_STYLE_PROPS = [
     "box-sizing",
     "padding-top",
@@ -62,7 +63,9 @@ const MEASURED_BUBBLE_STYLE_PROPS = [
 
 let bubbleMeasureHost = null;
 let bubbleWidthSyncFrame = 0;
+let tailColorSyncFrame = 0;
 const pendingBubbleWidthRoots = new Set();
+const pendingTailColorRoots = new Set();
 
 function getBubbleMeasureHost() {
     if (!bubbleMeasureHost) {
@@ -107,6 +110,358 @@ function copyBubbleMeasurementStyles(source, target) {
 function getMaxInlineSize(element) {
     const maxWidth = Number.parseFloat(window.getComputedStyle(element).maxWidth);
     return Number.isFinite(maxWidth) ? maxWidth : null;
+}
+
+function splitTopLevelCssParts(value) {
+    const parts = [];
+    let depth = 0;
+    let start = 0;
+
+    for (let index = 0; index < value.length; index += 1) {
+        const char = value[index];
+        if (char === "(") {
+            depth += 1;
+            continue;
+        }
+        if (char === ")") {
+            depth = Math.max(0, depth - 1);
+            continue;
+        }
+        if (char === "," && depth === 0) {
+            parts.push(value.slice(start, index).trim());
+            start = index + 1;
+        }
+    }
+
+    parts.push(value.slice(start).trim());
+    return parts.filter(Boolean);
+}
+
+function parseCssColor(colorValue) {
+    if (typeof colorValue !== "string") {
+        return null;
+    }
+
+    const normalized = colorValue.trim();
+    if (!normalized) {
+        return null;
+    }
+
+    if (normalized.startsWith("#")) {
+        const hex = normalized.slice(1);
+        const chunk = hex.length === 3
+            ? hex.split("").map((part) => part + part).join("")
+            : hex;
+        if (chunk.length !== 6) {
+            return null;
+        }
+        const value = Number.parseInt(chunk, 16);
+        if (Number.isNaN(value)) {
+            return null;
+        }
+        return {
+            r: (value >> 16) & 255,
+            g: (value >> 8) & 255,
+            b: value & 255,
+            a: 1
+        };
+    }
+
+    const match = normalized.match(/^rgba?\((.+)\)$/i);
+    if (!match) {
+        return null;
+    }
+
+    const channels = match[1]
+        .split(",")
+        .map((part) => part.trim())
+        .map(Number.parseFloat);
+
+    if (channels.length < 3 || channels.slice(0, 3).some((value) => Number.isNaN(value))) {
+        return null;
+    }
+
+    return {
+        r: channels[0],
+        g: channels[1],
+        b: channels[2],
+        a: Number.isFinite(channels[3]) ? channels[3] : 1
+    };
+}
+
+function parseGradientStop(stopValue) {
+    const trimmed = stopValue.trim();
+    let depth = 0;
+
+    for (let index = trimmed.length - 1; index >= 0; index -= 1) {
+        const char = trimmed[index];
+        if (char === ")") {
+            depth += 1;
+            continue;
+        }
+        if (char === "(") {
+            depth = Math.max(0, depth - 1);
+            continue;
+        }
+        if (/\s/.test(char) && depth === 0) {
+            const colorPart = trimmed.slice(0, index).trim();
+            const positionPart = trimmed.slice(index + 1).trim();
+            const color = parseCssColor(colorPart);
+            if (color) {
+                return {
+                    color,
+                    position: positionPart
+                };
+            }
+        }
+    }
+
+    const color = parseCssColor(trimmed);
+    if (!color) {
+        return null;
+    }
+
+    return {
+        color,
+        position: ""
+    };
+}
+
+function parseGradientDirection(directionValue) {
+    const normalized = directionValue.trim().toLowerCase().replace(/\s+/g, " ");
+    const directionMap = {
+        "to top": 0,
+        "to right": 90,
+        "to bottom": 180,
+        "to left": 270,
+        "to top right": 45,
+        "to right top": 45,
+        "to bottom right": 135,
+        "to right bottom": 135,
+        "to bottom left": 225,
+        "to left bottom": 225,
+        "to top left": 315,
+        "to left top": 315
+    };
+
+    return directionMap[normalized] ?? null;
+}
+
+function parseLinearGradient(gradientValue) {
+    if (typeof gradientValue !== "string") {
+        return null;
+    }
+
+    const match = gradientValue.trim().match(/^linear-gradient\((.*)\)$/i);
+    if (!match) {
+        return null;
+    }
+
+    const parts = splitTopLevelCssParts(match[1]);
+    if (parts.length < 2) {
+        return null;
+    }
+
+    let angle = 180;
+    let stopStartIndex = 0;
+    const rawDirection = parts[0].trim();
+    const angleMatch = rawDirection.match(/^(-?\d+(?:\.\d+)?)deg$/i);
+    const parsedDirection = parseGradientDirection(rawDirection);
+
+    if (angleMatch) {
+        angle = Number.parseFloat(angleMatch[1]);
+        stopStartIndex = 1;
+    } else if (parsedDirection !== null) {
+        angle = parsedDirection;
+        stopStartIndex = 1;
+    }
+
+    const stops = parts
+        .slice(stopStartIndex)
+        .map(parseGradientStop)
+        .filter(Boolean);
+
+    if (!stops.length) {
+        return null;
+    }
+
+    const positionedStops = stops.map((stop) => {
+        const positionMatch = stop.position.match(/(-?\d+(?:\.\d+)?)%/);
+        return {
+            color: stop.color,
+            position: positionMatch ? Number.parseFloat(positionMatch[1]) / 100 : null
+        };
+    });
+
+    if (positionedStops[0].position === null) {
+        positionedStops[0].position = 0;
+    }
+    if (positionedStops[positionedStops.length - 1].position === null) {
+        positionedStops[positionedStops.length - 1].position = 1;
+    }
+
+    let lastSpecifiedIndex = 0;
+    for (let index = 1; index < positionedStops.length; index += 1) {
+        if (positionedStops[index].position === null) {
+            continue;
+        }
+
+        const start = positionedStops[lastSpecifiedIndex].position;
+        const end = positionedStops[index].position;
+        const gap = index - lastSpecifiedIndex;
+
+        for (let fillIndex = 1; fillIndex < gap; fillIndex += 1) {
+            positionedStops[lastSpecifiedIndex + fillIndex].position = start + (((end - start) * fillIndex) / gap);
+        }
+
+        lastSpecifiedIndex = index;
+    }
+
+    for (let index = 1; index < positionedStops.length; index += 1) {
+        if (positionedStops[index].position === null) {
+            positionedStops[index].position = positionedStops[index - 1].position;
+        }
+    }
+
+    return {
+        angle,
+        stops: positionedStops
+    };
+}
+
+function interpolateColor(startColor, endColor, ratio) {
+    const nextRatio = Math.min(1, Math.max(0, ratio));
+    const interpolateChannel = (start, end) => start + ((end - start) * nextRatio);
+
+    return {
+        r: interpolateChannel(startColor.r, endColor.r),
+        g: interpolateChannel(startColor.g, endColor.g),
+        b: interpolateChannel(startColor.b, endColor.b),
+        a: interpolateChannel(startColor.a ?? 1, endColor.a ?? 1)
+    };
+}
+
+function formatCssColor(color) {
+    const roundChannel = (value) => Math.round(value);
+    const alpha = color.a ?? 1;
+    if (alpha < 1) {
+        return `rgba(${roundChannel(color.r)}, ${roundChannel(color.g)}, ${roundChannel(color.b)}, ${alpha})`;
+    }
+    return `rgb(${roundChannel(color.r)}, ${roundChannel(color.g)}, ${roundChannel(color.b)})`;
+}
+
+function sampleLinearGradientColor(gradient, gradientRect, pointX, pointY) {
+    if (!gradient || !gradientRect || !gradientRect.width || !gradientRect.height) {
+        return null;
+    }
+
+    const angleInRadians = (gradient.angle * Math.PI) / 180;
+    const directionX = Math.sin(angleInRadians);
+    const directionY = -Math.cos(angleInRadians);
+    const halfSpan = ((Math.abs(directionX) * gradientRect.width) + (Math.abs(directionY) * gradientRect.height)) / 2;
+    if (!halfSpan) {
+        return formatCssColor(gradient.stops[gradient.stops.length - 1].color);
+    }
+
+    const centerX = gradientRect.left + (gradientRect.width / 2);
+    const centerY = gradientRect.top + (gradientRect.height / 2);
+    const projection = ((pointX - centerX) * directionX) + ((pointY - centerY) * directionY);
+    const progress = Math.min(1, Math.max(0, (projection + halfSpan) / (halfSpan * 2)));
+
+    for (let index = 1; index < gradient.stops.length; index += 1) {
+        const previousStop = gradient.stops[index - 1];
+        const nextStop = gradient.stops[index];
+        if (progress > nextStop.position) {
+            continue;
+        }
+
+        const segmentSpan = nextStop.position - previousStop.position;
+        const ratio = segmentSpan <= 0
+            ? 0
+            : (progress - previousStop.position) / segmentSpan;
+        return formatCssColor(interpolateColor(previousStop.color, nextStop.color, ratio));
+    }
+
+    return formatCssColor(gradient.stops[gradient.stops.length - 1].color);
+}
+
+function averageCssColors(colors) {
+    if (!colors.length) {
+        return null;
+    }
+
+    const totals = colors.reduce((result, color) => {
+        result.r += color.r;
+        result.g += color.g;
+        result.b += color.b;
+        result.a += color.a ?? 1;
+        return result;
+    }, { r: 0, g: 0, b: 0, a: 0 });
+
+    const count = colors.length;
+    return formatCssColor({
+        r: totals.r / count,
+        g: totals.g / count,
+        b: totals.b / count,
+        a: totals.a / count
+    });
+}
+
+function syncOutgoingTailColors(root = document) {
+    if (!root || typeof root.querySelectorAll !== "function") {
+        return;
+    }
+
+    const shells = root.querySelectorAll(".message-row.me.type-text .message-bubble-shell");
+    shells.forEach((shell) => {
+        const bubble = shell.querySelector(".message-bubble");
+        const tail = shell.querySelector(".message-tail.me");
+        if (!(bubble instanceof HTMLElement) || !(tail instanceof HTMLElement)) {
+            return;
+        }
+
+        const computed = window.getComputedStyle(bubble);
+        const gradient = parseLinearGradient(computed.backgroundImage);
+        if (!gradient) {
+            tail.style.background = computed.backgroundColor;
+            return;
+        }
+
+        const bubbleRect = bubble.getBoundingClientRect();
+        const usesViewportAttachment = computed.backgroundAttachment.includes("fixed");
+        const gradientRect = usesViewportAttachment
+            ? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
+            : bubbleRect;
+        const tailRect = tail.getBoundingClientRect();
+        const tailSamplePoints = [
+            {
+                x: bubbleRect.right - 2,
+                y: bubbleRect.bottom - 6
+            },
+            {
+                x: bubbleRect.right - 4,
+                y: bubbleRect.bottom - 3
+            },
+            {
+                x: tailRect.left + (tailRect.width * 0.18),
+                y: tailRect.top + (tailRect.height * 0.58)
+            },
+            {
+                x: tailRect.left + (tailRect.width * 0.28),
+                y: tailRect.top + (tailRect.height * 0.72)
+            }
+        ];
+        const sampledTailColor = averageCssColors(
+            tailSamplePoints
+                .map(({ x, y }) => sampleLinearGradientColor(gradient, gradientRect, x, y))
+                .map(parseCssColor)
+                .filter(Boolean)
+        );
+
+        if (sampledTailColor) {
+            tail.style.background = sampledTailColor;
+        }
+    });
 }
 
 function measureTextBubbleWidth(shell) {
@@ -184,6 +539,24 @@ function syncMeasuredBubbleWidths(root = document) {
         }
         shell.style.width = `${measuredInlineSize}px`;
     });
+
+    syncOutgoingTailColors(root);
+}
+
+function scheduleOutgoingTailColorSync(root = document) {
+    pendingTailColorRoots.add(root || document);
+    if (tailColorSyncFrame) {
+        return;
+    }
+
+    tailColorSyncFrame = requestAnimationFrame(() => {
+        tailColorSyncFrame = 0;
+        const roots = [...pendingTailColorRoots];
+        pendingTailColorRoots.clear();
+        roots.forEach((pendingRoot) => {
+            syncOutgoingTailColors(pendingRoot);
+        });
+    });
 }
 
 function scheduleMeasuredBubbleWidthSync(root = document) {
@@ -203,6 +576,8 @@ function scheduleMeasuredBubbleWidthSync(root = document) {
 }
 
 window.scheduleMeasuredBubbleWidthSync = scheduleMeasuredBubbleWidthSync;
+window.scheduleOutgoingTailColorSync = scheduleOutgoingTailColorSync;
+window.syncOutgoingTailColors = syncOutgoingTailColors;
 
 function loadSettingsToggles() {
     try {
@@ -256,8 +631,8 @@ function initializeSettingsToggles() {
 }
 
 function syncSharedProfileUI() {
-    const chatHeaderAvatar = document.querySelector("header > div > img");
-    const chatHeaderName = document.querySelector("header > span");
+    const chatHeaderAvatar = document.querySelector(".chat-header-avatar > img");
+    const chatHeaderName = document.querySelector(".chat-header-shell > span");
     const settingsProfileBadge = document.querySelector(".settings-profile-badge");
     const settingsProfileName = document.querySelector(".settings-profile-name");
 
@@ -280,12 +655,136 @@ function syncSharedProfileUI() {
     }
 }
 
+function resizeComposerInput({ preserveScroll = true } = {}) {
+    if (!(inputBox instanceof HTMLTextAreaElement)) {
+        return;
+    }
+
+    const computed = window.getComputedStyle(inputBox);
+    const lineHeight = Number.parseFloat(computed.lineHeight)
+        || (Number.parseFloat(computed.fontSize) || 17) * 1.35;
+    const borderBoxHeight = inputBox.offsetHeight - inputBox.clientHeight;
+    const maxHeight = Math.ceil((lineHeight * COMPOSER_MAX_ROWS) + borderBoxHeight);
+    const previousHeight = Number.parseFloat(inputBox.style.height) || inputBox.getBoundingClientRect().height || 0;
+
+    inputBox.style.height = "auto";
+    const nextHeight = Math.min(inputBox.scrollHeight, maxHeight);
+    inputBox.style.height = `${Math.max(Math.ceil(lineHeight), Math.ceil(nextHeight))}px`;
+    inputBox.style.overflowY = inputBox.scrollHeight > maxHeight + 1 ? "auto" : "hidden";
+
+    if (preserveScroll
+        && typeof syncViewportLayout === "function"
+        && Math.abs((Number.parseFloat(inputBox.style.height) || 0) - previousHeight) > 0.5) {
+        syncViewportLayout({ preserveScroll: true });
+    }
+}
+
 function updateComposerState() {
     const hasText = inputBox.value.trim() !== "";
     imageBtn.classList.toggle("hidden", hasText);
     voiceBtn.classList.toggle("hidden", hasText);
     enterBtn.classList.toggle("hidden", !hasText);
     stickerBtn.classList.remove("hidden");
+    resizeComposerInput({ preserveScroll: true });
+}
+
+function normalizeMessageType(type) {
+    if (type === "system") {
+        return "system";
+    }
+    if (["reaction", "sticker"].includes(type)) {
+        return "reaction";
+    }
+    if (type === "image") {
+        return "image";
+    }
+    return "text";
+}
+
+function normalizeMessageSender(sender, fallback = "me") {
+    if (sender === "system") {
+        return "system";
+    }
+    if (sender === "other") {
+        return "other";
+    }
+    return fallback;
+}
+
+function createMessage({
+    id,
+    sender = "me",
+    type = "text",
+    text = "",
+    reaction = "",
+    imageSrc = "",
+    imageAlt = "",
+    createdAt = Date.now(),
+    reactionEmoji = ""
+} = {}) {
+    const normalizedType = normalizeMessageType(type);
+    const normalizedCreatedAt = Number(createdAt) || Date.now();
+    const normalizedReactionEmoji = typeof reactionEmoji === "string" ? reactionEmoji : "";
+    const messageId = id || (normalizedCreatedAt + Math.floor(Math.random() * 1000));
+
+    if (normalizedType === "system") {
+        const normalizedText = typeof text === "string" ? text.trim() : "";
+        if (!normalizedText) {
+            return null;
+        }
+        return {
+            id: messageId,
+            sender: "system",
+            type: normalizedType,
+            text: normalizedText,
+            createdAt: normalizedCreatedAt,
+            reactionEmoji: normalizedReactionEmoji
+        };
+    }
+
+    const normalizedSender = normalizeMessageSender(sender);
+    if (normalizedType === "reaction") {
+        if (!reaction || !REACTIONS[reaction]) {
+            return null;
+        }
+        return {
+            id: messageId,
+            sender: normalizedSender,
+            type: normalizedType,
+            reaction,
+            createdAt: normalizedCreatedAt,
+            reactionEmoji: normalizedReactionEmoji
+        };
+    }
+
+    if (normalizedType === "image") {
+        const normalizedImageSrc = typeof imageSrc === "string" ? imageSrc.trim() : "";
+        if (!normalizedImageSrc) {
+            return null;
+        }
+        return {
+            id: messageId,
+            sender: normalizedSender,
+            type: normalizedType,
+            imageSrc: normalizedImageSrc,
+            imageAlt: typeof imageAlt === "string" ? imageAlt : "",
+            createdAt: normalizedCreatedAt,
+            reactionEmoji: normalizedReactionEmoji
+        };
+    }
+
+    const normalizedText = typeof text === "string" ? text.trim() : "";
+    if (!normalizedText) {
+        return null;
+    }
+    return {
+        id: messageId,
+        sender: normalizedSender,
+        type: normalizedType,
+        text: normalizedText,
+        createdAt: normalizedCreatedAt,
+        reactionEmoji: normalizedReactionEmoji
+    };
 }
 
 function normalizeMessage(rawMessage, index) {
@@ -293,54 +792,14 @@ function normalizeMessage(rawMessage, index) {
         return null;
     }
 
-    const type = ["reaction", "sticker"].includes(rawMessage.type)
-        ? "reaction"
-        : rawMessage.type === "image"
-            ? "image"
-            : "text";
-    const sender = rawMessage.sender === "other" ? "other" : "me";
     const createdAt = Number(rawMessage.createdAt) || Date.now() + index;
-
-    if (type === "reaction") {
-        const reaction = rawMessage.reaction;
-        if (!reaction || !REACTIONS[reaction]) {
-            return null;
-        }
-        return {
-            id: rawMessage.id || createdAt + index,
-            sender,
-            type,
-            reaction,
-            createdAt,
-            reactionEmoji: typeof rawMessage.reactionEmoji === "string" ? rawMessage.reactionEmoji : ""
-        };
-    }
-
-    if (type === "image") {
-        const imageSrc = typeof rawMessage.imageSrc === "string" ? rawMessage.imageSrc : "";
-        if (!imageSrc) {
-            return null;
-        }
-        return {
-            id: rawMessage.id || createdAt + index,
-            sender,
-            type,
-            imageSrc,
-            imageAlt: typeof rawMessage.imageAlt === "string" ? rawMessage.imageAlt : "",
-            createdAt,
-            reactionEmoji: typeof rawMessage.reactionEmoji === "string" ? rawMessage.reactionEmoji : ""
-        };
-    }
-
-    const text = typeof rawMessage.text === "string" ? rawMessage.text : "";
-    return {
+    return createMessage({
+        ...rawMessage,
         id: rawMessage.id || createdAt + index,
-        sender,
-        type,
-        text,
-        createdAt,
-        reactionEmoji: typeof rawMessage.reactionEmoji === "string" ? rawMessage.reactionEmoji : ""
-    };
+        type: normalizeMessageType(rawMessage.type),
+        sender: normalizeMessageSender(rawMessage.sender),
+        createdAt
+    });
 }
 
 function saveMessages() {
@@ -436,10 +895,22 @@ function createChatIntroBlock() {
 
 function createAcceptedNotice() {
     const row = document.createElement("div");
-    row.className = "system-row";
+    row.className = "system-row accepted-notice-row";
     const text = document.createElement("p");
     text.className = "system-note";
     text.textContent = "Yêu cầu trò chuyện đã được chấp nhận. Bạn có thể bắt đầu trò chuyện.";
+    row.appendChild(text);
+    return row;
+}
+
+function createInlineSystemMessageRow(message) {
+    const row = document.createElement("article");
+    row.className = "message-row system-row inline-system-row group-single type-system";
+
+    const text = document.createElement("p");
+    text.className = "system-note";
+    text.textContent = message.text;
+
     row.appendChild(text);
     return row;
 }
@@ -624,6 +1095,10 @@ function addMessageGestureHandlers(row) {
 function createMessageRow(message, layout, options = {}) {
     const { interactive = true, preview = false, includePreviewAvatar = false, index } = options;
 
+    if (message.type === "system") {
+        return createInlineSystemMessageRow(message);
+    }
+
     const row = document.createElement("article");
     row.className = `message-row ${message.sender} ${layout}`;
     row.classList.add(`type-${message.type}`);
@@ -702,14 +1177,14 @@ function createRenderableMessageRow(index, options = {}) {
     });
     const row = createMessageRow(message, layout, { index, ...options });
     const previous = messages[index - 1];
-    if (previous && previous.sender !== message.sender) {
+    if (previous && previous.type !== "system" && message.type !== "system" && previous.sender !== message.sender) {
         row.classList.add("sender-break");
     }
     return row;
 }
 
 function getAcceptedNoticeRow() {
-    return messageList.querySelector(".system-row");
+    return messageList.querySelector(".accepted-notice-row");
 }
 
 function syncLeadingStaticRows() {
@@ -796,28 +1271,28 @@ function syncBubbleTailForRow(row, message, layout) {
 
 function updateMessageRowLayout(index) {
     const row = getMessageRowNode(index);
-    const message = messages[index];
-    if (!row || !message) {
+    const currentMessage = messages[index];
+    if (!row || !currentMessage) {
         return null;
     }
 
-    const layout = computeMessageLayout(message, {
+    const layout = computeMessageLayout(currentMessage, {
         previous: messages[index - 1],
         next: messages[index + 1]
     });
 
     row.classList.remove(...MESSAGE_LAYOUT_CLASS_NAMES);
     row.classList.add(layout);
-    row.classList.toggle("sender-break", Boolean(messages[index - 1] && messages[index - 1].sender !== message.sender));
+    row.classList.toggle("sender-break", Boolean(messages[index - 1] && messages[index - 1].sender !== currentMessage.sender));
 
-    if (message.sender === "other" && message.type !== "reaction") {
+    if (currentMessage.sender === "other" && currentMessage.type !== "reaction") {
         const avatarSlot = row.querySelector(".message-avatar-slot");
         if (avatarSlot) {
             avatarSlot.replaceWith(createOtherAvatar(layout));
         }
     }
 
-    syncBubbleTailForRow(row, message, layout);
+    syncBubbleTailForRow(row, currentMessage, layout);
     return row;
 }
 
@@ -843,6 +1318,13 @@ function syncReadReceiptRow({ attachToLatest = false } = {}) {
 }
 
 function syncTypingIndicatorRow() {
+    messageList.querySelectorAll(".typing-avatar-hidden").forEach((row) => {
+        row.classList.remove("typing-avatar-hidden");
+    });
+    messageList.querySelectorAll(".typing-tail-hidden").forEach((row) => {
+        row.classList.remove("typing-tail-hidden");
+    });
+
     const existing = document.getElementById("ai-typing-row");
     if (!isAiTyping) {
         existing?.remove();
@@ -851,6 +1333,11 @@ function syncTypingIndicatorRow() {
 
     const typingRow = existing || createTypingRow();
     messageList.appendChild(typingRow);
+    const latestMessageIndex = messages.length - 1;
+    if (latestMessageIndex >= 0 && messages[latestMessageIndex]?.sender === "other") {
+        const latestOtherRow = getMessageRowNode(latestMessageIndex);
+        latestOtherRow?.classList.add("typing-avatar-hidden", "typing-tail-hidden");
+    }
     scheduleMeasuredBubbleWidthSync(typingRow);
     return typingRow;
 }
@@ -1030,26 +1517,35 @@ function renderMessages({ attachReadReceiptToLatest = false } = {}) {
 }
 
 function createTextMessage(text, sender = "me") {
-    return {
-        id: Date.now() + Math.floor(Math.random() * 1000),
+    return createMessage({
         sender,
         type: "text",
-        text: text.replace(/\s+/g, " ").trim(),
-        createdAt: Date.now(),
-        reactionEmoji: ""
-    };
+        text,
+        createdAt: Date.now()
+    });
 }
 
+function createSystemMessage(text) {
+    return createMessage({
+        sender: "system",
+        type: "system",
+        text,
+        createdAt: Date.now()
+    });
+}
+window.createMessage = createMessage;
+window.createTextMessage = createTextMessage;
+window.createSystemMessage = createSystemMessage;
+
 function createReactionMessage(reaction, sender = "me") {
-    return {
-        id: Date.now() + Math.floor(Math.random() * 1000),
+    return createMessage({
         sender,
         type: "reaction",
         reaction,
-        createdAt: Date.now(),
-        reactionEmoji: ""
-    };
+        createdAt: Date.now()
+    });
 }
+window.createReactionMessage = createReactionMessage;
 
 function isSameCalendarDay(first, second) {
     const firstDate = new Date(first);
@@ -1181,6 +1677,9 @@ async function handleSendMessage() {
     inputBox.focus();
 
     if (typeof isTrendModeActive === "function" && isTrendModeActive()) {
+        if (typeof stopActiveAiRun === "function") {
+            stopActiveAiRun();
+        }
         await handleTrendMessageCore(text);
         return;
     }
@@ -1203,6 +1702,9 @@ function handleSendReaction(reaction) {
     persistMessages();
     appendLatestMessage();
     if (typeof isTrendModeActive === "function" && isTrendModeActive()) {
+        if (typeof stopActiveAiRun === "function") {
+            stopActiveAiRun();
+        }
         return;
     }
     scheduleAiReactionReply(reaction);
@@ -1563,4 +2065,3 @@ function buildContextMenu(row, index) {
         handleEscape
     };
 }
-

@@ -125,6 +125,11 @@ let activeTrendId = "";
 let activeTrendScript = null;
 
 const trendCache = new Map();
+const TREND_EVENT_PRIORITY = {
+    state: 0,
+    background: 1,
+    chat: 2
+};
 
 const FALLBACK_AI_CONFIG = {
     profile: {
@@ -208,16 +213,58 @@ function normalizeTrendText(text) {
         .trim();
 }
 
+function normalizeTrendChatSender(rawSender) {
+    const normalized = normalizeTrendText(rawSender).replace(/\s+/g, "");
+    if (["me", "toi", "minh", "self", "user"].includes(normalized)) {
+        return "me";
+    }
+    return "other";
+}
+
+function normalizeTrendTimedField(rawField, valueKey) {
+    if (!rawField || typeof rawField !== "object") {
+        return null;
+    }
+
+    const value = typeof rawField[valueKey] === "string" ? rawField[valueKey].trim() : "";
+    if (!value) {
+        return null;
+    }
+
+    return {
+        [valueKey]: value,
+        delay: Math.max(0, Number(rawField.delay) || 0)
+    };
+}
+
+function normalizeTrendChatField(rawField) {
+    const normalized = normalizeTrendTimedField(rawField, "text");
+    if (!normalized) {
+        return null;
+    }
+
+    return {
+        ...normalized,
+        sender: normalizeTrendChatSender(rawField.sender || rawField.from || rawField.role)
+    };
+}
+
 function normalizeTrendStep(rawStep) {
     if (!rawStep || typeof rawStep !== "object") {
         return null;
     }
 
-    return {
-        chat: typeof rawStep.chat === "string" ? rawStep.chat.trim() : "",
-        delay: Math.max(0, Number(rawStep.delay) || 0),
-        state: typeof rawStep.state === "string" ? rawStep.state.trim() : ""
+    const step = {
+        chat: normalizeTrendChatField(rawStep.chat),
+        state: normalizeTrendTimedField(rawStep.state, "value"),
+        background: normalizeTrendTimedField(rawStep.background, "theme")
     };
+
+    if (!step.chat && !step.state && !step.background) {
+        return null;
+    }
+
+    return step;
 }
 
 function normalizeTrendEntry(rawEntry) {
@@ -264,33 +311,24 @@ async function loadTrendScript(trendName) {
         };
     }
 
-    const candidatePaths = [
-        `trends/${trendId}.txt`,
-        `trends/${trendId}.json`
-    ];
+    const path = `trends/${trendId}.json`;
 
-    let lastError = null;
-    for (const path of candidatePaths) {
-        try {
-            const response = await fetch(path, { cache: "no-store" });
-            if (!response.ok) {
-                lastError = new Error(`HTTP ${response.status}`);
-                continue;
-            }
-
-            const payload = await response.json();
-            const entries = parseTrendEntries(payload);
-            trendCache.set(trendId, entries);
-            return {
-                id: trendId,
-                entries
-            };
-        } catch (error) {
-            lastError = error;
+    try {
+        const response = await fetch(path, { cache: "no-store" });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
         }
-    }
 
-    throw lastError || new Error(`Cannot load trend "${trendId}".`);
+        const payload = await response.json();
+        const entries = parseTrendEntries(payload);
+        trendCache.set(trendId, entries);
+        return {
+            id: trendId,
+            entries
+        };
+    } catch (error) {
+        throw error;
+    }
 }
 
 function persistTrendMode() {
@@ -332,13 +370,24 @@ function isTrendModeActive() {
     return Boolean(activeTrendId && Array.isArray(activeTrendScript) && activeTrendScript.length);
 }
 
-function cancelTrendMode() {
+function stopActiveAiRun({ preserveTrendTyping = false } = {}) {
     aiGenerationRunId += 1;
-    isAiTyping = false;
+    if (aiReplyTimer) {
+        window.clearTimeout(aiReplyTimer);
+        aiReplyTimer = null;
+    }
+    if (!preserveTrendTyping) {
+        isAiTyping = false;
+    }
+    clearTrendComposerDraftIfSimulated();
+    renderTypingIndicator();
+}
+
+function cancelTrendMode() {
+    stopActiveAiRun();
     activeTrendId = "";
     activeTrendScript = null;
     persistTrendMode();
-    renderTypingIndicator();
     if (typeof scrollMessagesToBottom === "function") {
         scrollMessagesToBottom(true);
     }
@@ -346,12 +395,10 @@ function cancelTrendMode() {
 
 async function startTrendMode(trendName) {
     const trend = await loadTrendScript(trendName);
-    aiGenerationRunId += 1;
-    isAiTyping = false;
+    stopActiveAiRun();
     activeTrendId = trend.id;
     activeTrendScript = trend.entries;
     persistTrendMode();
-    renderTypingIndicator();
     if (typeof scrollMessagesToBottom === "function") {
         scrollMessagesToBottom(true);
     }
@@ -378,6 +425,232 @@ async function initializeTrendMode() {
 }
 window.initializeTrendMode = initializeTrendMode;
 
+function isTrendRunActive(runId) {
+    return runId === aiGenerationRunId && isTrendModeActive();
+}
+
+function setTrendComposerTypingState(isTyping) {
+    if (!(inputBox instanceof HTMLTextAreaElement)) {
+        return;
+    }
+    inputBox.dataset.trendComposerTyping = isTyping ? "true" : "false";
+}
+
+function syncTrendComposerDraft(value) {
+    if (!(inputBox instanceof HTMLTextAreaElement)) {
+        return;
+    }
+
+    inputBox.value = value;
+    if (typeof updateComposerState === "function") {
+        updateComposerState();
+    }
+    if (typeof scrollMessagesToBottom === "function") {
+        scrollMessagesToBottom(true);
+    }
+}
+
+function clearTrendComposerDraftIfSimulated() {
+    if (!(inputBox instanceof HTMLTextAreaElement)) {
+        return;
+    }
+
+    if (inputBox.dataset.trendComposerTyping === "true") {
+        syncTrendComposerDraft("");
+    }
+    setTrendComposerTypingState(false);
+}
+
+function resolveTrendComposerTypingDuration(text, availableDuration) {
+    const charCount = [...String(text || "")].length;
+    if (!charCount || availableDuration <= 0) {
+        return 0;
+    }
+
+    const minimum = Math.max(140, charCount * 24);
+    const maximum = Math.max(minimum, charCount * 70);
+    const naturalTarget = randomInt(minimum, maximum);
+    return Math.min(Math.max(0, availableDuration), naturalTarget);
+}
+
+function buildHumanTypingIntervals(text, totalDuration) {
+    const chars = [...String(text || "")];
+    if (!chars.length) {
+        return [];
+    }
+
+    if (!(totalDuration > 0)) {
+        return chars.map((char, index) => {
+            if (/\s/u.test(char)) {
+                return randomInt(12, 34);
+            }
+            if (/[,.!?;:]/u.test(char)) {
+                return randomInt(54, 120);
+            }
+            if (index > 0 && chars[index - 1] === " ") {
+                return randomInt(36, 86);
+            }
+            return randomInt(24, 78);
+        });
+    }
+
+    const weights = chars.map((char, index) => {
+        let weight = randomInt(70, 150) / 100;
+        if (/\s/u.test(char)) {
+            weight *= 0.34;
+        } else if (/[,.!?;:]/u.test(char)) {
+            weight *= 1.7;
+        } else if (index > 0 && chars[index - 1] === " ") {
+            weight *= 1.14;
+        }
+        return weight;
+    });
+
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0) || chars.length;
+    let allocated = 0;
+    return weights.map((weight, index) => {
+        if (index === weights.length - 1) {
+            return Math.max(0, Math.round(totalDuration - allocated));
+        }
+        const slice = Math.max(0, Math.round((totalDuration * weight) / totalWeight));
+        allocated += slice;
+        return slice;
+    });
+}
+
+async function simulateTrendComposerTyping(text, runId, totalDuration = 0) {
+    if (!(inputBox instanceof HTMLTextAreaElement)) {
+        return String(text || "").trim();
+    }
+
+    const chars = [...String(text || "")];
+    if (!chars.length) {
+        return "";
+    }
+
+    const intervals = buildHumanTypingIntervals(chars.join(""), totalDuration);
+    let draft = "";
+    setTrendComposerTypingState(true);
+    syncTrendComposerDraft("");
+
+    try {
+        for (let index = 0; index < chars.length; index += 1) {
+            if (!isTrendRunActive(runId)) {
+                syncTrendComposerDraft("");
+                return null;
+            }
+
+            draft += chars[index];
+            syncTrendComposerDraft(draft);
+
+            if (index >= chars.length - 1) {
+                continue;
+            }
+
+            const pause = intervals[index] || 0;
+            if (pause > 0) {
+                await sleep(pause);
+            }
+        }
+
+        return draft.trim();
+    } finally {
+        setTrendComposerTypingState(false);
+    }
+}
+
+function appendTrendMessage(message) {
+    if (!message) {
+        return;
+    }
+
+    messages.push(message);
+    persistMessages();
+    if (typeof appendLatestMessage === "function") {
+        appendLatestMessage();
+    } else {
+        renderTypingIndicator();
+    }
+}
+
+function applyTrendTypingState(state) {
+    const shouldShowTyping = isTrendTypingState(state);
+    const shouldHideTyping = isTrendNoneState(state);
+
+    if (shouldShowTyping && !isAiTyping) {
+        isAiTyping = true;
+        renderTypingIndicator();
+        if (typeof scrollMessagesToBottom === "function") {
+            scrollMessagesToBottom(true);
+        }
+    }
+
+    if (shouldHideTyping && isAiTyping) {
+        isAiTyping = false;
+        renderTypingIndicator();
+        if (typeof scrollMessagesToBottom === "function") {
+            scrollMessagesToBottom(true);
+        }
+    }
+}
+
+function applyTrendBackground(themeId) {
+    const themeDefinition = typeof window.getThemeDefinition === "function"
+        ? window.getThemeDefinition(themeId)
+        : null;
+
+    if (!themeDefinition?.id) {
+        console.warn(`Unknown trend background theme: ${themeId}`);
+        return false;
+    }
+
+    if (typeof window.setTheme === "function") {
+        window.setTheme(themeDefinition.id);
+    }
+
+    if (typeof window.createSystemMessage === "function") {
+        appendTrendMessage(
+            window.createSystemMessage(
+                `${PROFILE.name} \u0111\u00e3 thay \u0111\u1ed5i ch\u1ee7 \u0111\u1ec1 c\u1ee7a \u0111o\u1ea1n chat th\u00e0nh ${themeDefinition.name}`
+            )
+        );
+    }
+
+    return true;
+}
+
+function createTrendStepQueue(step) {
+    return [
+        step.state
+            ? {
+                kind: "state",
+                delay: step.state.delay,
+                priority: TREND_EVENT_PRIORITY.state,
+                value: step.state.value
+            }
+            : null,
+        step.background
+            ? {
+                kind: "background",
+                delay: step.background.delay,
+                priority: TREND_EVENT_PRIORITY.background,
+                theme: step.background.theme
+            }
+            : null,
+        step.chat
+            ? {
+                kind: "chat",
+                delay: step.chat.delay,
+                priority: TREND_EVENT_PRIORITY.chat,
+                text: step.chat.text,
+                sender: step.chat.sender
+            }
+            : null
+    ]
+        .filter(Boolean)
+        .sort((first, second) => (first.delay - second.delay) || (first.priority - second.priority));
+}
+
 async function handleTrendMessageCore(text) {
     if (!isTrendModeActive()) {
         return false;
@@ -391,44 +664,59 @@ async function handleTrendMessageCore(text) {
     const runId = ++aiGenerationRunId;
 
     for (const step of entry.steps) {
-        const delay = Math.max(0, step.delay || 0);
-        const shouldShowTyping = isTrendTypingState(step.state);
-        const shouldHideTyping = isTrendNoneState(step.state);
+        const eventQueue = createTrendStepQueue(step);
+        let elapsedDelay = 0;
 
-        if (delay > 0) {
-            await sleep(delay);
-        }
+        for (const event of eventQueue) {
+            const waitTime = Math.max(0, event.delay - elapsedDelay);
+            const isComposerTypingEvent = event.kind === "chat" && event.sender === "me";
 
-        if (runId !== aiGenerationRunId || !isTrendModeActive()) {
-            return false;
-        }
+            if (isComposerTypingEvent) {
+                const typingDuration = resolveTrendComposerTypingDuration(event.text, waitTime);
+                const idleDuration = Math.max(0, waitTime - typingDuration);
 
-        if (shouldShowTyping && !isAiTyping) {
-            isAiTyping = true;
-            renderTypingIndicator();
-            if (typeof scrollMessagesToBottom === "function") {
-                scrollMessagesToBottom(true);
+                if (idleDuration > 0) {
+                    await sleep(idleDuration);
+                }
+                if (!isTrendRunActive(runId)) {
+                    clearTrendComposerDraftIfSimulated();
+                    return false;
+                }
+
+                const typedText = await simulateTrendComposerTyping(event.text, runId, typingDuration);
+                elapsedDelay = event.delay;
+                if (!typedText || !isTrendRunActive(runId)) {
+                    clearTrendComposerDraftIfSimulated();
+                    return false;
+                }
+
+                syncTrendComposerDraft("");
+                appendTrendMessage(createTextMessage(typedText, "me"));
+                continue;
             }
-        }
 
-        if (shouldHideTyping && isAiTyping) {
-            isAiTyping = false;
-            renderTypingIndicator();
-            if (typeof scrollMessagesToBottom === "function") {
-                scrollMessagesToBottom(true);
+            if (waitTime > 0) {
+                await sleep(waitTime);
             }
-        }
+            elapsedDelay = event.delay;
 
-        if (!step.chat) {
-            continue;
-        }
+            if (!isTrendRunActive(runId)) {
+                return false;
+            }
 
-        messages.push(createTextMessage(step.chat, "other"));
-        persistMessages();
-        if (typeof appendLatestMessage === "function") {
-            appendLatestMessage();
-        } else {
-            renderTypingIndicator();
+            if (event.kind === "state") {
+                applyTrendTypingState(event.value);
+                continue;
+            }
+
+            if (event.kind === "background") {
+                applyTrendBackground(event.theme);
+                continue;
+            }
+
+            if (event.kind === "chat") {
+                appendTrendMessage(createTextMessage(event.text, event.sender || "other"));
+            }
         }
     }
 
@@ -979,26 +1267,24 @@ class LocalChatAI {
 const localChatAI = new LocalChatAI(FALLBACK_AI_CONFIG);
 
 function createTypingRow() {
-    const wrapper = typeof createMessageRow === "function"
-        ? createMessageRow({
-            id: `typing-${Date.now()}`,
-            sender: "other",
-            type: "text",
-            text: "",
-            createdAt: Date.now(),
-            reactionEmoji: ""
-        }, "group-single", { interactive: false })
-        : document.createElement("div");
+    const wrapper = document.createElement("article");
     wrapper.id = "ai-typing-row";
-    wrapper.classList.add("typing-indicator-row");
+    wrapper.className = "message-row other group-single type-text typing-indicator-row";
 
-    const shell = wrapper.querySelector(".message-bubble-shell") || document.createElement("div");
-    if (!shell.classList.contains("message-bubble-shell")) {
-        shell.className = "message-bubble-shell";
-    }
-    const bubble = shell.querySelector(".message-bubble") || document.createElement("div");
+    const avatarSlot = document.createElement("div");
+    avatarSlot.className = "message-avatar-slot typing-avatar-slot";
+    const avatar = document.createElement("img");
+    avatar.className = "message-avatar";
+    avatar.src = OTHER_AVATAR;
+    avatar.alt = PROFILE.name;
+    avatarSlot.appendChild(avatar);
+
+    const shell = document.createElement("div");
+    shell.className = "message-bubble-shell";
+
+    const bubble = document.createElement("div");
     bubble.className = "message-bubble typing-row";
-    bubble.textContent = "";
+
     const dots = document.createElement("div");
     dots.className = "typing-dots";
     for (let index = 0; index < 3; index += 1) {
@@ -1007,13 +1293,13 @@ function createTypingRow() {
         dot.style.setProperty("--dot-index", String(index));
         dots.appendChild(dot);
     }
-    bubble.replaceChildren(dots);
-    if (!shell.contains(bubble)) {
-        shell.appendChild(bubble);
-    }
-    if (!wrapper.contains(shell)) {
-        wrapper.appendChild(shell);
-    }
+    bubble.appendChild(dots);
+    shell.appendChild(bubble);
+    const tail = document.createElement("span");
+    tail.className = "message-tail other";
+    shell.appendChild(tail);
+    wrapper.append(avatarSlot, shell);
+
     return wrapper;
 }
 
@@ -1142,8 +1428,7 @@ async function scheduleAiReply(prompt) {
 }
 
 function resetConversation() {
-    aiGenerationRunId += 1;
-    isAiTyping = false;
+    stopActiveAiRun();
     messages = DEFAULT_MESSAGES.map(normalizeMessage).filter(Boolean);
     renderedMessageCount = Math.min(messages.length, MESSAGE_RENDER_BATCH);
     persistMessages();
