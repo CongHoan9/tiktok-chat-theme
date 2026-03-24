@@ -757,7 +757,7 @@ footer {
     border-radius: 999px;
     justify-content: center;
     z-index: 2;
-    background-color: var(--composer-surface-color);
+    background-color: var(--app-surface-color);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.24);
     pointer-events: none;
 }
