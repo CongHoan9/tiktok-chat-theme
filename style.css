@@ -175,6 +175,7 @@ footer {
     --app-height: 100dvh;
     --viewport-offset-top: 0px;
     --keyboard-inset: 0px;
+    --screen-height: 100lvh;
     position: fixed;
     top: 0;
     right: 0;
@@ -216,7 +217,7 @@ footer {
     bottom: auto !important;
     z-index: 0;
     width: 100vw !important;
-    height: 100lvh !important;
+    height: var(--screen-height) !important;
     min-width: 0;
     margin-inline: 0 !important;
     pointer-events: none;
